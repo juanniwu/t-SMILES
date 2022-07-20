@@ -1,0 +1,59 @@
+{
+  "metadata": {
+    "exp": "GPT2[5-512]-h[512]-nh[8]-nctx[256]-d[0.27]-opt[Adam]-lr[0.00010]",    
+    "datetime": "2022_07_07_10_47_31",
+    "bestmodel": "",
+    "dataset": "../RawData/QM/QM9/qm9.smi",
+    "token": [ " ", "#", "%", "(", ")", "*", "+", "-", ".", "/", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", 
+    	":", "<", "=", ">", "@", "C", "F", "H", "N", "O", "[", "[C@@H]", "[C@H]", "[CH+]", "[CH-]", "[CH]", "[N+]", "[NH+]", 
+    	"[NH-]", "[NH2+]", "[NH3+]", "[O-]", "[OH+]", "[cH+]", "[cH-]", "[n+]", "[nH+]", "[nH]", "\\", "]", "c", "n", "o", "&" ],
+    "dataset_len": 133017,
+    "token_len": 54
+  },
+  "hparam": {
+    "batch_size": 128,
+    "optimizer": "Adam",
+    "optimizer_lr": 0.0001,
+    "optimizer_weight_decay": 0.0001,
+    "num_layers": 5,
+    "embedding_size": 512,
+    "hidden_size": 512,
+    "n_heads": 8,
+    "n_ctx": 256,
+    "layer_norm_epsilon": 1e-05,
+    "embd_pdrop": 0.1624,
+    "atten_dropout": 0.2687,
+    "resid_dropout": 0.1467,
+    "initializer_range": 0.02,
+    "torchscript": false,
+    "output_attentions": true
+  },
+  "tparam": {
+    "input_size": 46,
+    "output_size": 46,
+    "n_iters": 15,
+    "n_saveinterval": 1000,
+    "n_samples": 100,
+    "device": "cuda:0",
+    "use_cuda": true,
+    "batch_first": false,
+    "lr_step": true,
+    "lr_step_size": 36234,
+    "lr_step_gamma": 0.5,
+    "clip_grad": -50,
+    "clip": 1,
+    "in_channels": 256,
+    "in_features": 54,
+    "out_features": 54
+  },
+  "gparam": null,
+  "model": null,
+  "GPT2[5-512]-h[512]-nh[8]-nctx[256]-d[0.27]-opt[Adam]-lr[0.00010]": [
+    {
+      "gen_smiles": [
+        { "valid_%": "0.95%" },
+        { "puniq_%": "1.00%" }
+      ]
+    }
+  ]
+}

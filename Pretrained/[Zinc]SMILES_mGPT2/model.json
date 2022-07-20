@@ -1,0 +1,60 @@
+{
+  "metadata": {
+    "exp": "GPT2[5-512]-h[512]-nh[8]-nctx[120]-d[0.27]-opt[Adam]-lr[0.00010]",    
+    "datetime": "2022_07_06_08_18_40",
+    "bestmodel": "",
+    "dataset": "../RawData/JTVAE/data/zinc/all.txt.bfs[64]_org.smi",
+    "token": [ " ", "#", "%", "(", ")", "*", "-", ".", "/", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ":", "<", "=", ">", 
+    	"Br", "C", "Cl", "F", "I", "N", "O", "P", "S", "[", "[C@@H]", "[C@@]", "[C@H]", "[C@]", "[CH-]", "[CH2-]", "[N+]", "[N-]", 
+    	"[NH+]", "[NH-]", "[NH2+]", "[NH3+]", "[O+]", "[O-]", "[OH+]", "[P+]", "[P@@H]", "[P@@]", "[P@]", "[PH+]", "[PH2]", "[PH]", 
+    	"[S+]", "[S-]", "[S@@+]", "[S@@]", "[S@]", "[SH+]", "[n+]", "[n-]", "[nH+]", "[nH]", "[o+]", "[s+]", "\\", "]", "c", "n", "o", "s", "&" ],
+    "dataset_len": 249454,
+    "token_len": 74
+  },
+  "hparam": {
+    "batch_size": 16,
+    "optimizer": "Adam",
+    "optimizer_lr": 0.0001,
+    "optimizer_weight_decay": 0.0001,
+    "num_layers": 5,
+    "embedding_size": 512,
+    "hidden_size": 512,
+    "n_heads": 8,
+    "n_ctx": 120,
+    "layer_norm_epsilon": 1e-05,
+    "embd_pdrop": 0.1624,
+    "atten_dropout": 0.2687,
+    "resid_dropout": 0.1467,
+    "initializer_range": 0.02,
+    "torchscript": false,
+    "output_attentions": true
+  },
+  "tparam": {
+    "input_size": 46,
+    "output_size": 46,
+    "n_iters": 10,
+    "n_saveinterval": 1000,
+    "n_samples": 100,
+    "device": "cuda:0",
+    "use_cuda": true,
+    "batch_first": false,
+    "lr_step": false,
+    "lr_step_size": 45430,
+    "lr_step_gamma": 0.5,
+    "clip_grad": -50,
+    "clip": 1,
+    "in_channels": 120,
+    "in_features": 74,
+    "out_features": 74
+  },
+  "gparam": null,
+  "model": null,
+  "GPT2[5-512]-h[512]-nh[8]-nctx[120]-d[0.27]-opt[Adam]-lr[0.00010]": [
+    {
+      "gen_smiles": [
+        { "valid_%": "0.85%" },
+        { "puniq_%": "1.00%" }
+      ]
+    }
+  ]
+}
