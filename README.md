@@ -21,6 +21,8 @@ using different fragmentation algorithms, the training dataset is easier and
 more efficiently to be expanded on t-SMILES to explore different chemical spaces
 without having to change anything of the architecture of generation model.
 
+![](media/78c6b9dff08c83fc2be73c41dd4cee28.png)
+
 Here we provide the source code of our method.
 
 Dependencies
