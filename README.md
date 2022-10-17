@@ -1,7 +1,7 @@
 Fragment-based t-SMILES for de novo molecular generation
 ========================================================
 
-![](media/dd664ea772dd3d2f3e2baee91bbad812.png)
+![](media/fc72fb9c07aa73bf5007ad1cd4b23a6b.png)
 
 The directory contains source code of the article: Wu et al's Fragment-based
 t-SMILES for de novo molecular generation
