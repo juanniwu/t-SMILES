@@ -75,11 +75,6 @@ do the following steps sequentially by running scripts:
 In addition, this toolkit also provides some other scripts for data processing
 and model architectures etc.
 
-1.  DataSet/JTNN/MolTree.py
-
->   It defines molecule fragmentation algorithms include BRICS and JTVAE, which
->   could be used to generate fragment vocabulary
-
 1.  DataSet/Graph/CNJTMol.py
 
 >   It contained a preprocess function to generate t-SMILES from data set.
@@ -99,6 +94,3 @@ Acknowledgement
 We thank the following Git repositories that gave me a lot of inspirations:
 
 1.  GPT2: https://github.com/samwisegamjeee/pytorch-transformers
-
-2.  JTVAE:
-    [https](https://github.com/wengong-jin/icml18-jtnn)://github.com/wengon-jin/icml18-jtnn
