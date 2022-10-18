@@ -1,25 +1,19 @@
 Fragment-based t-SMILES for de novo molecular generation
 ========================================================
 
-![](media/fc72fb9c07aa73bf5007ad1cd4b23a6b.png)
-
 The directory contains source code of the article: Wu et al's Fragment-based
 t-SMILES for de novo molecular generation
 
 In this study, we propose a general-purposed, fragment-based, hierarchical
-molecular representation named t-SMILES (tree-based SMILES) which describes
-molecules using a SMILES-type string obtained by doing breadth first search
-(BFS) on full binary molecular tree formed from fragmented molecular graph.
+molecular representation named t-SMILES
 
-t-SMILES uses SMILES instead of fragment dictionaries id to represent molecule
-fragment, so that, powerful and rapidly developing sequence-based solutions can
-be applied to fragment-based molecular tasks in the same way as classical
-SMILES.
+With t-SMILES, powerful and rapidly developing sequence-based solutions can be
+applied to fragment-based molecular tasks in the same way as classical SMILES.
 
-Compared with classical SMILES which is relatively difficult to be augmented, by
-using different fragmentation algorithms, the training dataset is easier and
-more efficiently to be expanded on t-SMILES to explore different chemical spaces
-without having to change anything of the architecture of generation model.
+Compared with classical SMILES which is relatively difficult to be augmented,
+the training dataset is easier and more efficiently to be expanded on t-SMILES
+to explore different chemical spaces without having to change anything of the
+architecture of generation model.
 
 ![](media/b158bf07bb36069d1a61d550dd3f3f2d.png)
 
