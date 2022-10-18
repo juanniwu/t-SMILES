@@ -5,7 +5,7 @@ The directory contains source code of the article: Wu et al's Fragment-based
 t-SMILES for de novo molecular generation
 
 In this study, we propose a general-purposed, fragment-based, hierarchical
-molecular representation named t-SMILES
+molecular representation named t-SMILES .
 
 With t-SMILES, powerful and rapidly developing sequence-based solutions can be
 applied to fragment-based molecular tasks in the same way as classical SMILES.
@@ -16,8 +16,6 @@ to explore different chemical spaces without having to change anything of the
 architecture of generation model.
 
 ![](media/b158bf07bb36069d1a61d550dd3f3f2d.png)
-
-![](media/78c6b9dff08c83fc2be73c41dd4cee28.png)
 
 Here we provide the source code of our method.
 
