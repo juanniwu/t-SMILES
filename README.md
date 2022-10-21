@@ -15,8 +15,6 @@ the training dataset is easier and more efficiently to be expanded on t-SMILES
 to explore different chemical spaces without having to change anything of the
 architecture of generation model.
 
-![](media/b158bf07bb36069d1a61d550dd3f3f2d.png)
-
 Here we provide the source code of our method.
 
 Dependencies
