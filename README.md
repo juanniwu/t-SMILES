@@ -91,4 +91,16 @@ Acknowledgement
 
 We thank the following Git repositories that gave me a lot of inspirations:
 
-1.  GPT2: https://github.com/samwisegamjeee/pytorch-transformers
+1.  GPT2: <https://github.com/samwisegamjeee/pytorch-transformers>
+
+2.  MolGPT: https://github.com/devalab/molgpt
+
+3.  MGM：https://github.com/nyu-dl/dl4chem-mgm
+
+4.  JTVAE：[https](https://github.com/wengong-jin/icml18-jtnn)://github.com/wengon-jin/icml18-jtnn
+
+5.  hgraph2graph: https://github.com/wengong-jin/hgraph2graph
+
+6.  FragDGM: https://github.com/marcopodda/fragment-based-dgm
+
+7.  Guacamol：<https://github.com/BenevolentAI/guacamol_baselines>
