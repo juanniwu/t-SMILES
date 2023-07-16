@@ -12,12 +12,32 @@ molecular representation named t-SMILES .
 With t-SMILES, powerful and rapidly developing sequence-based solutions can be
 applied to fragment-based molecular tasks in the same way as classical SMILES.
 
-![](media/50d672d04caabe3605932186ead12e81.png)
+1) It can unify classical SMILES as t-SMILES to achieve a better-balanced
+performance;
 
-Compared with classical SMILES which is relatively difficult to be augmented,
-the training dataset is easier and more efficiently to be expanded on t-SMILES
-to explore different chemical spaces without having to change anything of the
-architecture of generation model.
+2) It significantly improves the generalization performance compared to
+classical SMILES, DeepSMILES, and SELFIES;
+
+3) It performs excellently on sparse datasets JNK3 and AID1706, regardless of
+whether it is the original model or based on data augmentation or pre-train
+fine-tuning;
+
+4) It outperforms previous fragment-based models being competitive with
+classical SMILES and graph-based approaches on Zinc, QM9 and ChEMBL.
+
+Meanwhile, due to its unique structure, encoding and decoding algorithm,
+t-SMILES possesses some distinguished properties, including:
+
+1) enabling a generative model without training and exploring a broader chemical
+space efficiently;
+
+2) being universally adaptable to any decomposition method such as BRICS, JTVAE,
+MMPA, or Scaffold;
+
+3) enabling the robust application of sequence-based generative models such as
+LSTM, Transformer, VAE, and AAE for molecular modeling.
+
+![](media/50d672d04caabe3605932186ead12e81.png)
 
 Here we provide the source code of our method.
 
