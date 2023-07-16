@@ -7,8 +7,12 @@ t-SMILES for de novo molecular generation
 In this study, we propose a general-purposed, fragment-based, hierarchical
 molecular representation named t-SMILES .
 
+![](media/dd664ea772dd3d2f3e2baee91bbad812.png)
+
 With t-SMILES, powerful and rapidly developing sequence-based solutions can be
 applied to fragment-based molecular tasks in the same way as classical SMILES.
+
+![](media/50d672d04caabe3605932186ead12e81.png)
 
 Compared with classical SMILES which is relatively difficult to be augmented,
 the training dataset is easier and more efficiently to be expanded on t-SMILES
