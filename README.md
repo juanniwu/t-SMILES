@@ -1,9 +1,6 @@
 t-SMILES: A Scalable Fragment-based Molecular Representation Algorithm for De Novo Molecule Generation
 ======================================================================================================
 
-The directory contains source code of the article: Wu et al's Fragment-based
-t-SMILES for de novo molecular generation
-
 In this study, we propose a scalable, fragment-based, multiscale molecular
 representation algorithm called t-SMILES (tree-based SMILES). The proposed
 t-SMILES algorithm can build a multilingual system for molecular description, in
