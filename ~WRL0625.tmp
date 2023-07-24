@@ -43,20 +43,6 @@ t-SMILES possesses some distinguished properties, including:
 
 ![](media/50d672d04caabe3605932186ead12e81.png)
 
-| Models[MolGPT]                   | Valid(↑) | Uniq(↑)   | Novel(↑)  | KLD(↑) | FCD(↑)    | Active Novel(↑) |
-|----------------------------------|----------|-----------|-----------|--------|-----------|-----------------|
-| SMILES [Rnd200]                  | 0.795    | 0.517     | 0.120     | 0.971  | 0.584     | 0.072           |
-| DeepSMILES[Rnd200]               | 0.677    | 0.462     | 0.076     | 0.966  | 0.510     | 0.043           |
-| SELFIES[Rnd200]                  | 1.000    | 0.689     | 0.238     | 0.944  | 0.544     | 0.148           |
-| t-SMILES\_JTVAE[Rnd1000]         | 1.000    | 0.795     | 0.779     | 0.919  | 0.309     | 0.266           |
-| t-SMILES\_BRICS[Rnd1000]         | 1.000    | 0.716     | 0.428     | 0.955  | 0.435     | 0.149           |
-| t-SMILES\_MMPA[Rnd1000]          | 1.000    | 0.790     | 0.771     | 0.966  | 0.533     | 0.278           |
-| t-SMILES\_Scaffold[Rnd1000]      | 1.000    | **0.924** | **0.821** | 0.940  | **0.587** | **0.563**       |
-| SMILES\_Aug50[rnd10]             | 0.807    | 0.727     | 0.570     | 0.962  | 0.566     | 0.483           |
-| t-SMILES\_Scaffold\_Rec50[rnd50] | 1.000    | **0.977** | **0.954** | 0.889  | 0.401     | **0.817**       |
-| TF\_SMILES[rnd10]                | 0.962    | 0.742     | 0.404     | 0.980  | 0.683     | 0.295           |
-| TF\_t-SMILES\_Scaffold[rnd10]    | 1.000    | **0.927** | **0.865** | 0.931  | 0.541     | **0.658**       |
-
 Here we provide the source code of our method.
 
 Dependencies
