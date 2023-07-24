@@ -11,7 +11,7 @@ which each decomposition algorithm creates a kind of language, and all these
 languages can complement each other and contribute to a whole mixed chemical
 space.
 
-![](media/4ce996a820a6223d29dac36b16f59343.jpg)
+![](media/b40d67bb9f96fc665ea35f31945193dc.png)
 
 With t-SMILES, powerful and rapidly developing sequence-based solutions can be
 applied to fragment-based molecular tasks in the same way as classical SMILES.
@@ -41,7 +41,7 @@ t-SMILES possesses some distinguished properties, including:
 3.  enabling the robust application of sequence-based generative models such as
     LSTM, Transformer, VAE, and AAE for molecular modeling.
 
-![](media/8c47b4fad67f1ed36653f82b6c2447f5.jpg)
+![](media/50d672d04caabe3605932186ead12e81.png)
 
 Here we provide the source code of our method.
 
