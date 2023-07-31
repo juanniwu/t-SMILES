@@ -94,20 +94,20 @@ Usage
 For designing the novel drug molecules with t-SMILES, you should do the
 following steps sequentially by running scripts:
 
-1.  DataSet/Graph/CNJTMol.py
+1.  **DataSet/Graph/CNJTMol.py**
 
 >   preprocess()
 
 >   It contained a preprocess function to generate t-SMILES from data set.
 
-1.  DataSet/Tokenlizer.py
+1.  **DataSet/Tokenlizer.py**
 
 >   preprocess(delimiter=',', invalid\_token = '&', save\_split = False)
 
 >   It defines a tokenizer tool which could be used to generate vocabulary of
 >   t-SMILES and SMILES.
 
-1.  DataSet/Graph/CNJMolAssembler.py
+1.  **DataSet/Graph/CNJMolAssembler.py**
 
 >   rebuild\_file()
 
