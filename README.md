@@ -102,16 +102,16 @@ following steps sequentially by running scripts:
 
 1.  DataSet/Tokenlizer.py
 
-    preprocess(delimiter=',', invalid\_token = '&', save\_split = False)
+>   preprocess(delimiter=',', invalid\_token = '&', save\_split = False)
 
-    >   It defines a tokenizer tool which could be used to generate vocabulary
-    >   of t-SMILES and SMILES.
+>   It defines a tokenizer tool which could be used to generate vocabulary of
+>   t-SMILES and SMILES.
 
-2.  DataSet/Graph/CNJMolAssembler.py
+1.  DataSet/Graph/CNJMolAssembler.py
 
-rebuild\_file()
+>   rebuild\_file()
 
-It reconstructs molecules form t-SMILES to generate classical SMILES.
+>   It reconstructs molecules form t-SMILES to generate classical SMILES.
 
 In this study, MolGPT, RNN, VAE, and AAE generative models are used for
 evaluation.
