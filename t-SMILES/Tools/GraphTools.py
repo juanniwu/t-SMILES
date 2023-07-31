@@ -1,5 +1,4 @@
 import networkx as nx
-import matplotlib.pyplot as plt
 
 class GTools:
     def BFS(g, source = 0):# Breadth_firct Search
