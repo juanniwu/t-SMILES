@@ -1,7 +1,5 @@
 import random
-import copy
 
-import rdkit
 from rdkit import Chem
 
 #from DataSet.Graph.CNJMolUtil import CNJMolUtil
@@ -31,13 +29,19 @@ class CNJMolUtil:
             return ''
 
         sml = bfs_ex_smiles[0]
+        skeleton = 'A'
         nlen = len(bfs_ex_smiles)
         for i in range(1, nlen):
             if bfs_ex_smiles[i-1] is not '&' and bfs_ex_smiles[i] is not '&':
                 sml += split
+                skeleton += split
             sml = sml + bfs_ex_smiles[i]
+            if bfs_ex_smiles[i] is '&':
+                skeleton = skeleton + bfs_ex_smiles[i]
+            else:
+                skeleton = skeleton + 'A'
 
-        return sml
+        return sml, skeleton
 
     def split_ex_smiles(ex_smiles, delimiter = '^'):
         split = delimiter

@@ -5,6 +5,13 @@ import copy
 
 #from MolUtils.RDKUtils.Utils import RDKUtils
 class RDKUtils:
+    def add_atom_index(mol, prop = 'molAtomMapNumber'):
+        n_atoms = mol.GetNumAtoms()
+        for i in range( n_atoms ):
+            mol.GetAtomWithIdx(i).SetProp(prop, str(mol.GetAtomWithIdx(i).GetIdx()))        
+
+        return mol
+
     def remove_atommap_info_mol(mol):
         if mol is not None:
             newmol = copy.deepcopy(mol)

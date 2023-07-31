@@ -3,29 +3,23 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
+import networkx as nx
 
 import rdkit.Chem as Chem
 
-import networkx as nx
-
-from Tools.GraphTools import GTools
 from Tools.MathUtils import BCMathUtils
+from Tools.GraphTools import GTools
 
-from DataSet.JTNN.MolTree import Vocab, MolTree, MolTreeNode
-from DataSet.STDTokens import CTokens
-from DataSet.STDTokens import STDTokens_Frag_JTVAE_Chembl,STDTokens_Frag_JTVAE_Zinc,STDTokens_Frag_JTVAE_QM9
-from DataSet.STDTokens import STDTokens_Frag_Brics_Zinc,STDTokens_Frag_Brics_Bridge_Zinc
+from DataSet.JTNN.MolTree import Vocab, MolTree
+from DataSet.STDTokens import CTokens, STDTokens_Frag_File
 
 from DataSet.Graph.CNJMolUtil import CNJMolUtil
-
 from DataSet.Graph.CNXBinaryTree import CNXBinaryTree
+
+from MolUtils.RDKUtils.Frag.RDKFragUtil import Fragment_Alg
+
+
            
-from MolUtils.RDKUtils.Brics.CBricsTree import CBricsTree
-from MolUtils.RDKUtils.Utils import RDKUtils
-
-#BFS: breadth-first search
-#DFS: depth-first-search
-
 class CNJTMolTreeNode():
     disconnect_char = '^'  #'.' is used in SMILES, '~'is used in SMARTS
     invalid_char = '&'
@@ -81,34 +75,39 @@ class CNJTMolTree(MolTree):
     def __init__(self, smiles,
                  jtvoc = None, #: Vocab
                  ctoken = None, #: CTokens, 
-                 dec_alg = 'BRICS',
-                 #dec_alg = 'JTVAE',
+                 dec_alg = Fragment_Alg.Scaffold,
+                 kekuleSmiles = True,
                  ) -> None:
 
+        self.combine_ex_smiles = None
+        self.skeleton = None
         self.dec_alg = dec_alg
+        self.kekuleSmiles   = kekuleSmiles 
 
         self.ctoken         = ctoken
         self.end_token      = ctoken.invalid_token #'&'
         self.end_token_idx  = ctoken.invalid_index # #P
 
-        self.jtvoc = jtvoc
-        self.n_voc = jtvoc.size()      
+        self.jtvoc = ctoken.STDTokens.vocab
+        self.n_voc = self.jtvoc.size()      
 
         if smiles is not None and len(smiles) > 0:
-            self.init_from_smile(smiles, jtvoc,ctoken, dec_alg = dec_alg)
+            self.init_from_smile(smiles, jtvoc,ctoken, dec_alg = dec_alg, kekuleSmiles = kekuleSmiles)
         else:
             #print('create a dummy CNJTMolTree')
             self.mol = None
 
         return
 
-    def init_from_smile(self, smiles,
+    def init_from_smile(self, 
+                        smiles:str,  #one molecule
                         jtvoc: Vocab,
                         ctoken: CTokens,
-                        dec_alg = 'BRICS'
+                        dec_alg = 'BRICS',
+                        kekuleSmiles = True,
                         ):
         try:
-            super(CNJTMolTree, self).__init__(smiles = smiles, dec_alg = dec_alg)
+            super(CNJTMolTree, self).__init__(smiles = smiles, dec_alg = dec_alg, kekuleSmiles = kekuleSmiles)
 
             self.n_nodes = len(self.nodes)
 
@@ -127,13 +126,17 @@ class CNJTMolTree(MolTree):
 
             self.bfs_binary_tree = self.create_bfs_binary_tree_ex(show = True)
 
-            self.bfs_ex_nodeid, self.bfs_ex_vocids, self.bfs_ex_smiles, self.new_vocs = CNJTMolTree.get_bfs_ex(self.ctoken, self.bfs_binary_tree, extra_dummy = True)   #generate advanced bfs
+            #self.bfs_binary_tree = self.create_bfs_binary_tree(show = True)
+            self.bfs_ex_nodeid, self.bfs_ex_vocids, self.bfs_ex_smiles, self.new_vocs = CNJTMolTree.get_bfs_ex(self.ctoken, 
+                                                                                                               self.bfs_binary_tree, 
+                                                                                                               extra_dummy = True)   #generate advanced bfs 
 
             self.bfs_idx_ex = GTools.BFS(self.nx_binarytree)    #Breadth first         
             self.dfs_idx_ex = GTools.DFS(self.nx_binarytree )   #Depth-First Search
 
             if self.bfs_ex_vocids is None:
                 self.mol = None
+            self.combine_ex_smiles, self.skeleton = CNJMolUtil.combine_ex_smiles(self.bfs_ex_smiles)
 
         except Exception as e:
             print('init_from_smile Exception:', smiles)
@@ -286,8 +289,8 @@ class CNJTMolTree(MolTree):
         for idx in self.bfs_idx:
             self.bfs_node_map[idx] = self.nx_binarytree.nodes[idx]['data']
 
-        if show:          
-           GTools.show_network_g_cnjtmol(self.nx_binarytree)
+        #if show:          
+        #   GTools.show_network_g_cnjtmol(self.nx_binarytree)
 
         self.bfs_binary_tree = self.nx_binarytree.nodes[0]['data']
         return self.bfs_binary_tree #the first node
@@ -353,8 +356,8 @@ class CNJTMolTree(MolTree):
                 if g.nodes[idx]['smile'] == '&':
                     g.remove_node(idx)
 
-        if show:          
-           GTools.show_network_g_cnjtmol(g)
+        #if show:          
+        #   GTools.show_network_g_cnjtmol(g)
 
         return g
 
@@ -439,8 +442,8 @@ class CNJTMolTree(MolTree):
 
         self.nx_binarytree.make_full()
 
-        if show:          
-           GTools.show_network_g_cnjtmol(self.nx_binarytree)
+        #if show:          
+        #   GTools.show_network_g_cnjtmol(self.nx_binarytree)
                     
         return self.bfs_binary_tree
 
@@ -470,7 +473,6 @@ class CNJTMolTree(MolTree):
                         sml = item.data['smile']
                         if Chem.MolFromSmiles(sml) is not None:
                             new_vocs.append(sml)
-                        print(f'============================{sml} is not in voc ')
                     #    return None, None, None
 
                     bfs_ex_nodeid.append(item.idx)  #to verify 
@@ -638,8 +640,8 @@ class CNJTMolTree(MolTree):
         for nid in g.nodes():
             g.nodes[nid]['nid'] = nid
 
-        if show:
-           GTools.show_network_g_cnjtmol(g)
+        #if show:
+        #   GTools.show_network_g_cnjtmol(g)
           
         return bfs_tree, g, bfs_node_map
 
@@ -699,8 +701,8 @@ class CNJTMolTree(MolTree):
 
         #T = nx.minimum_spanning_tree(g)
 
-        if show:
-            GTools.show_network_g_cnjtmol(g)
+        #if show:
+        #    GTools.show_network_g_cnjtmol(g)
 
         return g
 
@@ -728,8 +730,8 @@ class CNJTMolTree(MolTree):
 
             self.neighbor_map.append(nbs)
 
-        if show:
-            GTools.show_network_g_cnjtmol(bt)
+        #if show:
+        #    GTools.show_network_g_cnjtmol(bt)
 
         return g
 
@@ -832,120 +834,141 @@ class CNJTMolTree(MolTree):
         return np.array(xcode), np.array(ycode), max_len
 
 
-def preprocess():
-    vocab_path = '../RawData/JTVAE/data/zinc/Brics_bridge/all.txt.BRICS_token.voc'
-    vocab = [x.strip("\r\n ") for x in open(vocab_path)]
-    vocab = Vocab(vocab)
-      
-    std_jt_token = STDTokens_Frag_Brics_Bridge_Zinc()
-
-    maxlen = 120
-    ctoken = CTokens(std_jt_token, is_pad = True, pad_symbol = ' ', startend = True,
-                     max_length = maxlen,  flip = False, invalid = True )
-    #-----------------------------------------------------------------------------------
-    smlfile = '../RawData/JTVAE/data/zinc/all.txt.bfs[64]_org.smi'
-    #------------------------------------------------------   
-
-    bfs_ex_list = []
-    bfs_smile_list = []
-    bfs_smile_list_join = []
-    org_smile_list = []
-    bfs_max_Len = 0
-    vocab_list = set()
-
-    
-    df = pd.read_csv(smlfile, squeeze=True, delimiter=',',header = None) 
-    #df.dropna(how="any")
-    #smiles_list = [s for s in df.values.astype(str) if s != 'nan']
-    smiles_list = list(df.values)
-    for i, sml in tqdm(enumerate(smiles_list), total = len(smiles_list),  desc = 'parsing smiles ...'):
-        if len(sml) > maxlen:
-            continue
-
-        dec_alg = 'BRICS'
-        #dec_alg = 'JTVAE'
-
-        try:
-            cnjtmol = CNJTMolTree(sml, jtvoc = vocab, ctoken = ctoken, dec_alg = dec_alg)
-
-            if cnjtmol.mol is not None:
-                for c in cnjtmol.nodes:
-                    vocab_list.add(c.smiles)
-
-                org_smile_list.append(sml)
-
-                bfs_smile_list.append(cnjtmol.bfs_ex_smiles)            
-
-                smil = list(filter(None, cnjtmol.bfs_ex_smiles))
-                #joined = "".join(cnjtmol.bfs_ex_smiles)
-                joined = CNJMolUtil.combine_ex_smiles(cnjtmol.bfs_ex_smiles)
-
-                bfs_smile_list_join.append(joined)
-                
-                if len(cnjtmol.bfs_ex_vocids) > bfs_max_Len:
-                    bfs_max_Len = len(cnjtmol.bfs_ex_smiles)
-
-                #bfs_ex_list.append(cnjtmol.bfs_ex_vocids)
-
-        except:
-            print('preprocess exception:', sml)
-            continue
-    
-            #bfs_psd = np.pad(bfs_ex,(0, 120 - len(bfs_ex)), mode = 'constant', constant_values = CNJTMolTree.PAD_INDEX)
-       
-    ctoken.maxlen = bfs_max_Len + 4  #
-
-    #output = smlfile + f'.bfs[{bfs_max_Len}]_org.csv'          #
-    output = smlfile + f'.[{dec_alg}][{bfs_max_Len}]_org.csv'
-    df = pd.DataFrame(org_smile_list)
-    df.to_csv(output, index = False, header=False, na_rep="NULL")
-
-    #output = smlfile + f'.bfs[{bfs_max_Len}]_smiles_join.csv'  #
-    output = smlfile + f'.[{dec_alg}][{bfs_max_Len}]_join.csv'
-    df = pd.DataFrame(bfs_smile_list_join)
-    df.to_csv(output, index = False, header=False, na_rep="NULL")
-
-    return 
-
-
 def test():
-    smls = 'CC1(C)CC(=O)c2cnn(-c3ccccn3)c2C1Br'
+    smls = 'CC(C)CC1=C(CC(C)C)[AlH2+]1.CCCCCCCCCCCCCCCCNc1ccc(C#N)c(F)c1.CO.Cc1ccccc1.[H-]'
 
+    #Vanilla    = CC(C)CC1=C(CC(C)C)[Al+]1&CCCCCCCCCCCCCCCCNC1=CC=C(C#N)C(F)=C1&CO&CC1=CC=CC=C1&[HH2-]&&&    
+    #JTVAE      = CC&C&CC&&CC^CC&C1=C[Al+]1&CC&CC&C&CC&&CC&CC^CC&CC&CC&CC&CC&CC&CC&CC&CC&CC&CC&CC&CC&CC&CN&CN&C1=CC=CC=C1&CC&C#N^CF&&&CO^CC&C1=CC=CC=C1&[HH2-]&&&
+    #BRICS      = CC&C&CC&&CC^CC&C1=C[Al+]1&CC&CC&C&CC&&CC&C1=CC=CC=C1^CN&CN^CC^CC&C#N^CF^CC&&&CO&CC&CC&CC&C1=CC=CC=C1&CC&[HH2-]&CC&&&CC&CC&CC&CC&CC&CC&CC&CC&CC&&&
+    #BRICS_Base = CC(C)CC1=C(CC(C)C)[Al+]1&CCCCCCCCCCCCCCCC&CN&N#CC1=CC=C(N)C=C1F&&CO^CC1=CC=CC=C1&[HH2-]&&&
+    #MMPA       = CC&C&CC&&CC^CC^C1=CC=CC=C1^CC(C)CC1=C[Al+]1&CN&&&CN^CC^CC&C#N^CF^CC&&&CO&CC&C1=CC=CC=C1&CC&CC&CC&[HH2-]&CC&&&CC&CC&CC&CC&CC&CC&CC&CC&CC&&&
+    #Scaffold   = CC(C)C&CC&C1=C[Al+]1&CC&CC(C)C&&CCCCCCCCCCCCCCCCN^CN&C1=CC=CC=C1&CC&C#N^CF&&CO&C1=CC=CC=C1&CC&[HH2-]&&&
+    #========================================================
+    
+    dec_alg = Fragment_Alg.Vanilla
+    #dec_alg = Fragment_Alg.JTVAE
+    #dec_alg = Fragment_Alg.BRICS
+    #dec_alg = Fragment_Alg.BRICS_Base
+    #dec_alg = Fragment_Alg.MMPA
+    #dec_alg = Fragment_Alg.Scaffold
+
+
+    print('[seed is]:', smls)
+    print('[dec_alg is]:', dec_alg.name)
     #------------------------------------------------------
-    vocab_path = '../RawData/JTVAE/data/zinc/Brics_bridge/all.txt.BRICS_token.voc'
+    maxlen = 256
+    vocab_file = r'H:\GitHub\t-SMILES\RawData\QM9\JTVAE\QM9.smi.[JTVAE][24]_token.voc.smi'
 
-    vocab = [x.strip("\r\n ") for x in open(vocab_path)] 
-    vocab = Vocab(vocab)
-    #len_voc = 5825
-      
+    ctoken = CTokens(STDTokens_Frag_File(vocab_file), is_pad = True, pad_symbol = ' ', startend = True,
+                     max_length = maxlen,  flip = False, invalid = True, onehot = False)
 
-    std_jt_token = STDTokens_Frag_Brics_Zinc()
-    ctoken = CTokens(std_jt_token, is_pad = True, pad_symbol = ' ', startend = True,
-                     max_length = 256,  flip = False, invalid = True )
-
-    #dec_alg = 'BRICS'
-    dec_alg = 'JTVAE'
-
-    cnjtmol = CNJTMolTree(smls, jtvoc = vocab, ctoken = ctoken, dec_alg = dec_alg)
+     #----------    
+    cnjtmol = CNJTMolTree(smls, ctoken = ctoken, dec_alg = dec_alg)
     if cnjtmol is  None:
         print('cnjtmol is None')
      
     bfs_ex_smiles = cnjtmol.bfs_ex_smiles
     print('bfs_ex_smiles=', bfs_ex_smiles)
 
-    s = CNJMolUtil.combine_ex_smiles(bfs_ex_smiles)
+    s, skeleton = CNJMolUtil.combine_ex_smiles(bfs_ex_smiles)
     words = CNJMolUtil.split_ex_smiles(s)
     print('combine_ex_smiles=', s)
     print('words=',words)
-       
 
     return 
 
 
+def preprocess():
+
+    maxlen = 256
+    vocab_file = r'H:\GitHub\t-SMILES\RawData\AID1706\active\Scaffold\active_smiles.smi.[Scaffold][24]_token.voc.smi'
+
+    ctoken = CTokens(STDTokens_Frag_File(vocab_file), is_pad = True, pad_symbol = ' ', startend = True,
+                     max_length = maxlen,  flip = False, invalid = True, onehot = False)
+    #-----------------------------------------------------------------------------------
+    smlfile = r'H:\GitHub\t-SMILES\RawData\AID1706\active.smi'
+
+    #------------------------------------------------------   
+    #dec_algs = [Fragment_Alg.Vanilla]
+    #dec_algs = [Fragment_Alg.JTVAE]
+    #dec_algs = [Fragment_Alg.BRICS]
+    #dec_algs = [Fragment_Alg.BRICS_Base]
+    #dec_algs = [Fragment_Alg.MMPA]
+    dec_algs = [Fragment_Alg.Scaffold]
+
+    bfs_smile_list = []
+    bfs_smile_list_join = []
+    org_smile_list = []
+    bfs_max_Len = 0
+    vocab_list = set()
+    skt_list = set()
+    
+    df = pd.read_csv(smlfile, squeeze=True, delimiter=',',header = None) 
+    smiles_list = list(df.values)
+
+    for dec_alg in dec_algs:
+        print(f'----------[{dec_alg.name}]-------------')
+        save_prex = dec_alg.name
+
+        for i, sml in tqdm(enumerate(smiles_list), total = len(smiles_list),  desc = 'parsing smiles ...'):
+            if sml is None or str(sml) == 'nan' or len(sml) > maxlen:
+                continue
+        
+            try:
+                cnjtmol = CNJTMolTree(sml, ctoken = ctoken, dec_alg = dec_alg)
+
+                if cnjtmol.mol is not None:
+                    for c in cnjtmol.nodes:
+                        vocab_list.add(c.smiles)
+
+                    org_smile_list.append(sml)
+
+                    bfs_smile_list.append(cnjtmol.bfs_ex_smiles)            
+
+                    smil = list(filter(None, cnjtmol.bfs_ex_smiles))
+                    joined, skeleton = CNJMolUtil.combine_ex_smiles(cnjtmol.bfs_ex_smiles)
+
+                    bfs_smile_list_join.append(joined)
+                    skt_list.add(skeleton)
+                
+                    if len(cnjtmol.bfs_ex_vocids) > bfs_max_Len:
+                        bfs_max_Len = len(cnjtmol.bfs_ex_smiles)
+
+            except:
+                print('preprocess exception:', sml)
+                continue    
+
+       
+    ctoken.maxlen = bfs_max_Len + 4  #
+       
+    vocab = sorted(vocab_list)
+    output = smlfile + f'.[{save_prex}][{bfs_max_Len}]_token.voc.smi'
+    df = pd.DataFrame(vocab)
+    df.to_csv(output, index = False, header=False, na_rep="NULL")
+
+    #output = smlfile + f'.bfs[{bfs_max_Len}]_org.csv'          #
+    output = smlfile + f'.[{save_prex}][{bfs_max_Len}]_org.csv'
+    df = pd.DataFrame(org_smile_list)
+    df.to_csv(output, index = False, header=False, na_rep="NULL")
+
+    output = smlfile + f'.[{save_prex}][{bfs_max_Len}]_join.csv'
+    df = pd.DataFrame(bfs_smile_list_join)
+    df.to_csv(output, index = False, header=False, na_rep="NULL")
+ 
+    skt_list = list(skt_list)
+    skt_list.sort()
+    output = smlfile + f'.[{save_prex}][{bfs_max_Len}]_skt.csv'
+    df = pd.DataFrame(skt_list)
+    df.to_csv(output, index = False, header=False, na_rep="NULL")
+    print('[skt_list]:',len(skt_list))
+
+    return
 
 if __name__ == '__main__':
+
     test()
-    preprocess()
+
+    #preprocess()
 
 
 

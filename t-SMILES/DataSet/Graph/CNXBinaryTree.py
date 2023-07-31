@@ -1,6 +1,5 @@
 import networkx as nx
 import matplotlib.pyplot as plt
-from Tools.GraphTools import GTools
 
 
 class CNXBinaryTree(nx.DiGraph):

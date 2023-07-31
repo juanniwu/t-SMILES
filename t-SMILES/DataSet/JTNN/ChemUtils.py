@@ -1,14 +1,11 @@
-import rdkit
 import rdkit.Chem as Chem
-from rdkit.Chem import BRICS
 
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import minimum_spanning_tree
 from collections import defaultdict
 
-from rdkit.Chem.EnumerateStereoisomers import EnumerateStereoisomers, StereoEnumerationOptions
+from rdkit.Chem.EnumerateStereoisomers import EnumerateStereoisomers
 
-from MolUtils.RDKUtils.Utils import RDKUtils
 
 class ChemUtils:
     MST_MAX_WEIGHT = 100 
@@ -22,6 +19,11 @@ class ChemUtils:
         mol = Chem.MolFromSmiles(smiles)
         if mol is None: 
             return None
+
+        if ':' in smiles:
+            for a in mol.GetAtoms():
+                a.ClearProp('molAtomMapNumber')  
+
         Chem.Kekulize(mol)
         return mol
 
@@ -70,12 +72,22 @@ class ChemUtils:
             new_mol.AddBond(a1, a2, bt)
         return new_mol
 
-    def get_clique_mol(mol, atoms):
-        smiles  = Chem.MolFragmentToSmiles(mol, atoms, kekuleSmiles=True)
-        new_mol = Chem.MolFromSmiles(smiles, sanitize=False)
-        new_mol = ChemUtils.copy_edit_mol(new_mol).GetMol()
-        new_mol = ChemUtils.sanitize(new_mol) #We assume this is not None
-        return new_mol
+    def get_clique_mol(mol, atoms, kekuleSmiles=True):              
+        #RDKUtils.show_mol_with_atommap(mol, atommap = True)
+        if kekuleSmiles:
+            smiles  = Chem.MolFragmentToSmiles(mol, atoms, kekuleSmiles = True)
+            new_mol = Chem.MolFromSmiles(smiles, sanitize=False)
+            new_mol = ChemUtils.copy_edit_mol(new_mol).GetMol()
+            new_mol = ChemUtils.sanitize(new_mol) #We assume this is not None
+            sml = Chem.MolToSmiles(new_mol, kekuleSmiles = True) #, rootedAtAtom = 0   
+        else:
+            #updated at 2023.7.28 for for the reason:some kekuleSmiles can not be convert to mol
+            smiles  = Chem.MolFragmentToSmiles(mol, atoms)#
+            new_mol = Chem.MolFromSmiles(smiles, sanitize=True)      
+            sml = Chem.MolToSmiles(new_mol) #, rootedAtAtom = 0   
+            
+
+        return new_mol, sml
 
     def tree_decomp(mol):
         #RDKUtils.show_mol_with_atommap(mol, atommap= True)  
@@ -370,12 +382,15 @@ class ChemUtils:
 
                 cand_smiles.add(smiles)
                 candidates.append(amap)
+                if len(candidates) > 20:  #A patchch to stop loop  
+                    print('ChemUtils[enum_assemble] len(candidates) > 20')
+                    break
 
             if len(candidates) == 0:
                 return
-
-            for new_amap in candidates:
-                search(new_amap, depth + 1)
+            else:
+                for new_amap in candidates:
+                    search(new_amap, depth + 1)
             #end search
 
         search(prev_amap, 0)
@@ -532,247 +547,6 @@ class ChemUtils:
             print(e.args)
 
         return dec_smiles
-
-
-    #-----------------------------------------
-
-    def find_bond(mol_bonds, startid, endid):
-        for b in mol_bonds:
-            if b.GetBeginAtomIdx() == startid and b.GetEndAtomIdx() == endid:
-                return b
-        return None
-
-    def bond_in_ring(mol_bonds, startid, endid):
-        b = ChemUtils.find_bond(mol_bonds, startid, endid)
-        if b is not None and b.IsInRing():
-            return True
-        return False
-
-    def bond_is_bridge(bond, mol):
-        s = bond.GetBeginAtomIdx()
-        e = bond.GetEndAtomIdx()
-
-        if not bond.IsInRing() and mol.GetAtomWithIdx(s).IsInRing() and mol.GetAtomWithIdx(e).IsInRing():
-            return True
-        else:
-            return False
-
-    def brics_decomp_extra(mol, break_long_link=True, break_r_bridge=True):
-        # RDKUtils.show_mol_with_atommap(mol, atommap= True)
-
-        n_atoms = mol.GetNumAtoms()
-        if n_atoms == 1:
-            return [[0]], []
-
-        cliques = []
-        breaks = []
-
-        atom_cliques = {}
-        for i in range(n_atoms):
-            atom_cliques[i] = set()
-
-        try:
-            mol_bonds = mol.GetBonds()
-            for bond in mol.GetBonds():
-                a1 = bond.GetBeginAtom().GetIdx()
-                a2 = bond.GetEndAtom().GetIdx()
-                cliques.append([a1, a2])
-
-            single_cliq = []
-
-            brics_bonds = list(BRICS.FindBRICSBonds(mol))
-            if len(brics_bonds) == 0:
-                return [list(range(n_atoms))], []
-            else:
-                for bond in brics_bonds:
-                    bond = bond[0]
-                    if [bond[0], bond[1]] in cliques:
-                        cliques.remove([bond[0], bond[1]])
-                    else:
-                        cliques.remove([bond[1], bond[0]])
-
-                    atom = mol.GetAtomWithIdx(bond[0])
-                    if not atom.IsInRing():
-                        if len(atom.GetNeighbors()) > 2:
-                            if [atom.GetIdx()] not in single_cliq:
-                                single_cliq.append([atom.GetIdx()])
-                        else:
-                            cliques.append([bond[0]])
-                    atom = mol.GetAtomWithIdx(bond[1])
-                    if not atom.IsInRing():
-                        if len(atom.GetNeighbors()) > 2:
-                            if [atom.GetIdx()] not in single_cliq:
-                                single_cliq.append([atom.GetIdx()])
-                        else:
-                            cliques.append([bond[1]])
-
-            # break bonds between rings and non-ring atoms,  non-ring and non-ring
-            a_not_in_ring = []
-            for c in cliques:
-                if len(c) > 1:
-                    if mol.GetAtomWithIdx(c[0]).IsInRing() and not mol.GetAtomWithIdx(c[1]).IsInRing():
-                        breaks.append(c)
-                        a_not_in_ring.append(c[1])
-                    if mol.GetAtomWithIdx(c[1]).IsInRing() and not mol.GetAtomWithIdx(c[0]).IsInRing():
-                        breaks.append(c)
-                        a_not_in_ring.append(c[0])
-                    if break_long_link:
-                        if not mol.GetAtomWithIdx(c[1]).IsInRing() and not mol.GetAtomWithIdx(
-                                c[0]).IsInRing():  # non-ring and non-ring
-                            breaks.append(c)
-                            a_not_in_ring.append(c[0])
-                            a_not_in_ring.append(c[1])
-                    if break_r_bridge:
-                        if mol.GetAtomWithIdx(c[0]).IsInRing() and mol.GetAtomWithIdx(
-                                c[1]).IsInRing():  # ring-ring bridge
-                            if not ChemUtils.bond_in_ring(mol_bonds, c[0], c[1]):
-                                breaks.append(c)
-                                # a_not_in_ring.append(c[0])
-                                # a_not_in_ring.append(c[1])
-
-            for b in breaks:
-                if b in cliques:
-                    cliques.remove(b)
-            for a in a_not_in_ring:
-                atom = mol.GetAtomWithIdx(a)
-                if len(atom.GetNeighbors()) > 2:
-                    if [atom.GetIdx()] not in single_cliq:
-                        single_cliq.append([atom.GetIdx()])
-                else:
-                    if [a] not in cliques:
-                        cliques.append([a])
-
-            # select atoms at intersections as motif
-            for atom in mol.GetAtoms():
-                if len(atom.GetNeighbors()) > 2 and not atom.IsInRing():
-                    aid = atom.GetIdx()
-                    # cliques.append([atom.GetIdx()])
-                    if [aid] not in single_cliq:
-                        single_cliq.append([aid])
-
-                    for nei in atom.GetNeighbors():
-                        nid = nei.GetIdx()
-
-                        if [nid, aid] in cliques:
-                            cliques.remove([nid, aid])
-                            breaks.append([nid, aid])
-                        elif [aid, nid] in cliques:
-                            cliques.remove([aid, nid])
-                            breaks.append([aid, nid])
-
-                        if len(nei.GetNeighbors()) > 2 and not nei.IsInRing():
-                            if [nid] not in single_cliq:
-                                single_cliq.append([nid])
-                        else:
-                            cliques.append([nid])
-
-            # merge cliques
-            for c in range(len(cliques) - 1):
-                if c >= len(cliques):
-                    break
-                for k in range(c + 1, len(cliques)):
-                    if k >= len(cliques):
-                        break
-                    share = list(set(cliques[c]) & set(cliques[k]))
-                    if len(share) > 0 and share not in single_cliq:
-                        cliques[c] = list(set(cliques[c]) | set(cliques[k]))
-                        cliques[k] = []
-                cliques = [c for c in cliques if len(c) > 0]
-            cliques = [c for c in cliques if len(c) > 0]
-
-            for i, cliq in enumerate(cliques):
-                for a in cliq:
-                    atom_cliques[a].add(i)  # the value of single link node should be empty{}
-
-            # breaks_all = copy.deepcopy(breaks)
-            for b in brics_bonds:
-                breaks.append([b[0][0], b[0][1]])
-
-            for b in breaks:
-                if not mol.GetAtomWithIdx(b[0]).IsInRing() and mol.GetAtomWithIdx(b[1]).IsInRing():
-                    c_idx = atom_cliques[b[0]]
-                    if len(c_idx) > 0:  # not single link node
-                        cliques[list(c_idx)[0]].append(b[1])
-                elif not mol.GetAtomWithIdx(b[1]).IsInRing() and mol.GetAtomWithIdx(b[0]).IsInRing():
-                    c_idx = atom_cliques[b[1]]
-                    if len(c_idx) > 0:  # not single link node
-                        cliques[list(c_idx)[0]].append(b[0])
-
-            for b in breaks:
-                if not mol.GetAtomWithIdx(b[0]).IsInRing() and not mol.GetAtomWithIdx(b[1]).IsInRing():
-                    cliques.append([b[0], b[1]])
-                    if [b[0]] in cliques:
-                        cliques.remove([b[0]])
-                    if [b[1]] in cliques:
-                        cliques.remove([b[1]])
-
-                elif mol.GetAtomWithIdx(b[0]).IsInRing() and mol.GetAtomWithIdx(b[1]).IsInRing():
-                    if not ChemUtils.bond_in_ring(mol_bonds, b[0], b[1]):
-                        cliques.append([b[0], b[1]])
-
-            for item in single_cliq:
-                atom = mol.GetAtomWithIdx(item[0])
-                for nei in atom.GetNeighbors():
-                    aid = atom.GetIdx()
-                    nid = nei.GetIdx()
-                    if [nid] in cliques:
-                        cliques.remove([nid])
-                    if [aid, nid] not in cliques and [nid, aid] not in cliques:
-                        if aid < nid:
-                            cliques.append([aid, nid])
-                        else:
-                            cliques.append([nid, aid])
-
-            for i in range(n_atoms):
-                atom_cliques[i] = set()
-
-            for i, cliq in enumerate(cliques):
-                for a in cliq:
-                    atom_cliques[a].add(i)
-
-            single_cliq = []
-            for key, value in atom_cliques.items():
-                if len(value) >= 3:
-                    cliques.append([key])
-                    single_cliq.append([key])
-
-            # edges
-            edges = []
-            singles = set()
-            for s in range(len(cliques)):
-                s_cliq = cliques[s]
-                if len(s_cliq) == 1:
-                    singles.add(s)
-                    continue
-                for e in range(s + 1, len(cliques)):
-                    e_cliq = cliques[e]
-                    if len(e_cliq) == 1:
-                        singles.add(e)
-                        continue
-                    share = list(set(s_cliq) & set(e_cliq))
-                    if len(share) > 0 and share not in single_cliq:
-                        edges.append((s, e))
-
-            for i in singles:
-                s_cliq = cliques[i]
-                for cid in range(len(cliques)):
-                    if i == cid:
-                        continue
-                    share = list(set(cliques[i]) & set(cliques[cid]))
-                    if len(share) > 0:
-                        if i < cid:
-                            edges.append((i, cid))
-                        else:
-                            edges.append((cid, i))
-
-        except Exception as e:
-            print('brics_decomp_extra Exception: ', Chem.MolToSmiles(mol))
-            cliques = [list(range(n_atoms))]
-            edges = []
-            print(e.args)
-
-        return cliques, edges
-
 
 if __name__ == "__main__":
     print('ChemUtils')
