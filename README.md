@@ -62,31 +62,31 @@ Please make sure the following packages are installed:
 
 2.  [PyTorch](https://pytorch.org/)** (version == 1.7)**
 
-\$ conda install pytorch torchvision cudatoolkit=x.x -c pytorch
+>   \$ conda install pytorch torchvision cudatoolkit=x.x -c pytorch
 
-Note: it depends on the GPU device and CUDA tookit
+>   Note: it depends on the GPU device and CUDA tookit
 
-(x.x is the version of CUDA)
+>   (x.x is the version of CUDA)
 
 1.  [RDKit](https://www.rdkit.org/)** (version \>= 2020.03)**
 
-\$ conda install -c rdkit rdkit
+>   \$ conda install -c rdkit rdkit
 
 1.  Networkx**(version \>= 2.4)**
 
-\$ pip install networkx
+>   \$ pip install networkx
 
 1.  [Numpy](https://numpy.org/)** (version \>= 1.19)**
 
-\$ conda install numpy
+>   \$ conda install numpy
 
 1.  [Pandas](https://pandas.pydata.org/)** (version \>= 1.2.2)**
 
-\$ conda install pandas
+>   \$ conda install pandas
 
 1.  [Matplotlib](https://matplotlib.org/)** (version \>= 2.0)**
 
-\$ conda install matplotlib
+>   \$ conda install matplotlib
 
 Usage
 =====
