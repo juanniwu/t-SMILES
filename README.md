@@ -13,10 +13,9 @@ molecular graph.
 
 Systematic evaluations using JTVAE, BRICS, MMPA, and Scaffold show that:
 
-1.  It can build a multi-code system for molecular description, in which each
-    decomposition algorithm creates a kind of language, and all these languages
-    can complement each other and contribute to a whole mixed chemical space.
-    Under this framework, classical SMILES can be unified as a special case of
+1.  It can build a multi-code molecular description system, where various
+    descriptions complement each other, enhancing the overall performance. Under
+    this framework, classical SMILES can be unified as a special case of
     t-SMILES to achieve better balanced performance using hybrid decomposition
     algorithms.
 
