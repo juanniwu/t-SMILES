@@ -32,8 +32,6 @@ Systematic evaluations using JTVAE, BRICS, MMPA, and Scaffold show that:
 
 ![](media/27e1e223138ebc4eec1aaa668ec07ad5.tiff)
 
-![](media/27e1e223138ebc4eec1aaa668ec07ad5.tiff)
-
 ![](media/f337effc42bf3fefb6a7e32a6a989fab.tiff)
 
 ![](media/1915cecce9d17ade54fa6572b2e03607.png)
