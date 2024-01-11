@@ -1,37 +1,42 @@
-t-SMILES: A Scalable Fragment-based Molecular Representation Algorithm for De Novo Molecule Generation
+t-SMILES: A Scalable Fragment-based Molecular Representation Framework for De Novo Molecule Generation
 ======================================================================================================
 
+When using advanced methodologies derived from NLP field to solve chemical
+problems, two fundamental questions arise: 1) What are 'chemical words'? and 2)
+How can they be encoded as 'chemical sentences’?
+
 This study introduces a scalable, fragment-based, multiscale molecular
-representation algorithm called t-SMILES (tree-based SMILES). It describes
-molecules using SMILES-type strings obtained by performing a breadth-first
-search on a full binary tree formed from a fragmented molecular graph.
+representation algorithm called t-SMILES (tree-based SMILES) to address the
+second question. It describes molecules using SMILES-type strings obtained by
+performing a breadth-first search on a full binary tree formed from a fragmented
+molecular graph.
 
-![](media/b40d67bb9f96fc665ea35f31945193dc.png)
+Systematic evaluations using JTVAE, BRICS, MMPA, and Scaffold show that:
 
-Systematic evaluations show that:
+1.  It can build a multi-code system for molecular description, in which each
+    decomposition algorithm creates a kind of language, and all these languages
+    can complement each other and contribute to a whole mixed chemical space.
+    Under this framework, classical SMILES can be unified as a special case of
+    t-SMILES to achieve better balanced performance using hybrid decomposition
+    algorithms.
 
-1) It can build a multilingual system for molecular description, in which each
-decomposition algorithm creates a kind of language, and all these languages can
-complement each other and contribute to a whole mixed chemical space. Under this
-framework, classical SMILES can be unified as a special case of t-SMILES to
-achieve better balanced performance using hybrid decomposition algorithms.
+2.  It exhibits impressive performance on low-resource datasets JNK3 and
+    AID1706, whether the model is original, data augmented, or pre-training
+    fine-tuned;
 
-2) It significantly improves generalization performance compared with classical
-SMILES, DeepSMILES, and SELFIES;
+3.  It outperforms previous fragment-based models being competitive with
+    classical SMILES and graph-based methods on Zinc, QM9, and ChEMBL.
 
-3) It performs excellently on low-resource datasets JNK3 and AID1706 whether it
-is the original model or based on data augmentation or pre-training fine-tuning;
+4.  It significantly outperforms classical SMILES, DeepSMILES, SELFIES and
+    baseline models in goal-directed tasks.
 
-4) It outperforms previous fragment-based models being competitive with
-classical SMILES and graph-based methods on Zinc, QM9, and ChEMBL.
+![](media/27e1e223138ebc4eec1aaa668ec07ad5.tiff)
 
-5) It being universally adaptable to any decomposition method such as BRICS,
-JTVAE, MMPA, or Scaffold.
+![](media/ccc0beb37fc5eacf2aaa156ac99dd4c7.tiff)
 
-6) It enables the robust application of sequence-based generative models, such
-as LSTM, Transformer, VAE and AAE, in molecular modeling.
+![](media/1915cecce9d17ade54fa6572b2e03607.png)
 
-![](media/50d672d04caabe3605932186ead12e81.png)
+![](media/8e0ee188e740fb80cee8334d8f5616c4.png)
 
 Here we provide the source code of our method.
 
