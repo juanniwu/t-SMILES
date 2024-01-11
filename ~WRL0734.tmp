@@ -1,9 +1,9 @@
 t-SMILES: A Scalable Fragment-based Molecular Representation Framework for De Novo Molecule Generation
 ======================================================================================================
 
-When using advanced NLP methodologies to solve chemical problems, two
-fundamental questions arise: 1) What are 'chemical words'? and 2) How can they
-be encoded as 'chemical sentences’?
+When using advanced methodologies derived from NLP field to solve chemical
+problems, two fundamental questions arise: 1) What are 'chemical words'? and 2)
+How can they be encoded as 'chemical sentences’?
 
 This study introduces a scalable, fragment-based, multiscale molecular
 representation algorithm called t-SMILES (tree-based SMILES) to address the
@@ -24,39 +24,11 @@ Systematic evaluations using JTVAE, BRICS, MMPA, and Scaffold show that:
     AID1706, whether the model is original, data augmented, or pre-training
     fine-tuned;
 
-3.  It significantly outperforms classical SMILES, DeepSMILES, SELFIES and
-    baseline models in goal-directed tasks.
-
-4.  It outperforms previous fragment-based models being competitive with
+3.  It outperforms previous fragment-based models being competitive with
     classical SMILES and graph-based methods on Zinc, QM9, and ChEMBL.
 
-To support the t-SMILES algorithm, we introduce a new character, '&', to act as
-a tree node when the node is not a real fragment in FBT. Additionally, we
-introduce another new character, '\^', to separate two adjacent substructure
-segments in t-SMILES string, similar to the blank space in English sentences
-that separates two words.
-
-Three coding algorithms are presented in this study:
-
-1.  TSSA: t-SMILES with shared atom.
-
-2.  TSDY: t-SMILES with dummy atom but without ID.
-
-3.  TSID: t-SMILES with ID and dummy atom.
-
-For example, the three t-SMILES codes of Celecoxib are:
-
-1.  TSID\_M:
-
-    **[1\*]C&[1\*]C1=CC=C([2\*])C=C1&[2\*]C1=CC([3\*])=NN1[5\*]&[3\*]C([4\*])(F)F&[4\*]F\^[5\*]C1=CC=C([6\*])C=C1&&[6\*]S(N)(=O)=O&&&**
-
-2.  TSDY\_M (replace [n\*] with \*):
-
-    **\*C&\*C1=CC=C(\*)C=C1&\*C1=CC(\*)=NN1\*&\*C(\*)(F)F&\*F\^\*C1=CC=C(\*)C=C1&&\*S(N)(=O)=O&&&**
-
-3.  TSSA\_M:
-
-    **CC&C1=CC=CC=C1&CC&C1=C[NH]N=C1&CN&C1=CC=CC=C1\^CC\^CS&C&N[SH](=O)=O&CF&&&&FCF&&**
+4.  It significantly outperforms classical SMILES, DeepSMILES, SELFIES and
+    baseline models in goal-directed tasks.
 
 ![](media/27e1e223138ebc4eec1aaa668ec07ad5.tiff)
 
