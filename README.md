@@ -47,19 +47,19 @@ For example, the three t-SMILES codes of Celecoxib are:
 
 1.  TSID\_M:
 
-    **[1\*]C&[1\*]C1=CC=C([2\*])C=C1&[2\*]C1=CC([3\*])=NN1[5\*]&[3\*]C([4\*])(F)F&[4\*]F\^[5\*]C1=CC=C([6\*])C=C1&&[6\*]S(N)(=O)=O&&&**
+-   **[1\*]C&[1\*]C1=CC=C([2\*])C=C1&[2\*]C1=CC([3\*])=NN1[5\*]&[3\*]C([4\*])(F)F&[4\*]F\^[5\*]C1=CC=C([6\*])C=C1&&[6\*]S(N)(=O)=O&&&**
 
-2.  TSDY\_M (replace [n\*] with \*):
+1.  TSDY\_M (replace [n\*] with \*):
 
-    **\*C&\*C1=CC=C(\*)C=C1&\*C1=CC(\*)=NN1\*&\*C(\*)(F)F&\*F\^\*C1=CC=C(\*)C=C1&&\*S(N)(=O)=O&&&**
+-   **\*C&\*C1=CC=C(\*)C=C1&\*C1=CC(\*)=NN1\*&\*C(\*)(F)F&\*F\^\*C1=CC=C(\*)C=C1&&\*S(N)(=O)=O&&&**
 
-3.  TSSA\_M:
+1.  TSSA\_M:
 
-    **CC&C1=CC=CC=C1&CC&C1=C[NH]N=C1&CN&C1=CC=CC=C1\^CC\^CS&C&N[SH](=O)=O&CF&&&&FCF&&**
+-   **CC&C1=CC=CC=C1&CC&C1=C[NH]N=C1&CN&C1=CC=CC=C1\^CC\^CS&C&N**[SH](=O)**=O&CF&&&&FCF&&**
 
-    ![](media/27e1e223138ebc4eec1aaa668ec07ad5.tiff)
+![](media/8e72a886648f6d3fb68632a2613c83fe.png)
 
-![](media/f337effc42bf3fefb6a7e32a6a989fab.tiff)
+![](media/be914e2d09343efc5803099cc6d566f1.png)
 
 ![](media/1915cecce9d17ade54fa6572b2e03607.png)
 
