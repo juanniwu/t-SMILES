@@ -137,18 +137,25 @@ Acknowledgement
 
 We thank the following Git repositories that gave me a lot of inspirations:
 
-1.  GPT2: <https://github.com/samwisegamjeee/pytorch-transformers>
+1.  MolGPT[4] : https://github.com/devalab/molgpt
 
-2.  MolGPT: https://github.com/devalab/molgpt
+2.  MGM[7]: https://github.com/nyu-dl/dl4chem-mgm
 
-3.  MGM：https://github.com/nyu-dl/dl4chem-mgm
+3.  JTVAE[8]:
+    [https](https://github.com/wengong-jin/icml18-jtnn)://github.com/wengon-jin/icml18-jtnn
 
-4.  JTVAE：[https](https://github.com/wengong-jin/icml18-jtnn)://github.com/wengon-jin/icml18-jtnn
+4.  hgraph2graph[9]: https://github.com/wengong-jin/hgraph2graph
 
-5.  hgraph2graph: https://github.com/wengong-jin/hgraph2graph
+5.  DeepSmiles[17]: https://github.com/baoilleach/deepsmiles
 
-6.  FragDGM: https://github.com/marcopodda/fragment-based-dgm
+6.  SELFIES[20]: https://github.com/aspuru-guzik-group/selfies
 
-7.  Guacamol：<https://github.com/BenevolentAI/guacamol_baselines>
+7.  FragDGM[26]: https://github.com/marcopodda/fragment-based-dgm
 
-8.  MOSES: https://github.com/molecularsets/moses
+8.  Guacamol[50]: <https://github.com/BenevolentAI/guacamol_baselines>
+
+9.  CReM[51]: https://github.com/DrrDom/crem
+
+10. AttentiveFP[56]: https://github.com/OpenDrugAI/AttentiveFP
+
+11. GPT2: <https://github.com/samwisegamjeee/pytorch-transformers>
