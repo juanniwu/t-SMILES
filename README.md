@@ -65,6 +65,33 @@ For example, the three t-SMILES codes of Celecoxib are:
 
 ![](media/34a8f8377f10d43ce70e15df2e45709b.png)
 
+| Code        | Joint Point            | Frag Alg.                                            | Experiments                                                             | Relative Pros and Cons of TSSA, TSDY and TSID |
+|-------------|------------------------|------------------------------------------------------|-------------------------------------------------------------------------|-----------------------------------------------|
+| TSSA        | Shared Atom            | JTVAE, BRICS, MMPA, Scaffold, Hybrid                 | ChEMBL Zinc QM9 Low-Resource GPT, LSTM Transfer Learning Data Augmented | Highest reconstruction novelty score;         |
+| TSDY        | Dummy Atom, without ID | BRICS, MMPA, Scaffold, Hybrid                        | ChEMBL Zinc QM9 Goal-Oriented GPT, LSTM                                 | Medium reconstruction novelty score;          |
+| TSID        | Dummy Atom with ID     | BRICS, MMPA, Scaffold, Open-Ring, Hybrid             | ChEMBL Zinc QM9 Open-Ring GPT                                           | Almost zero reconstruction novelty score;     |
+| TS\_Vanilla |                        | ChEMBL Zinc QM9 Low-Resource Goal-Oriented GPT, LSTM | Classical SMILS in t-SMILES format                                      |                                               |
+
+1.  Generative model without training;
+
+2.  Generative model without training;
+
+3.  High computational performance on reconstruction;
+
+4.  Better fitting training data on physicochemical properties;
+
+5.  Larger molecules;
+
+6.  Need to be trained to build generative model;
+
+7.  High computational performance on reconstruction;
+
+8.  Better fitting training data on physicochemical properties;
+
+9.  Larger molecules;
+
+10. Cons: Longest;
+
 Here we provide the source code of our method.
 
 Dependencies
