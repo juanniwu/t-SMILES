@@ -141,8 +141,7 @@ We thank the following Git repositories that gave me a lot of inspirations:
 
 2.  MGM: https://github.com/nyu-dl/dl4chem-mgm
 
-3.  JTVAE:
-    [https](https://github.com/wengong-jin/icml18-jtnn)://github.com/wengon-jin/icml18-jtnn
+3.  JTVAE: https://github.com/wengon-jin/icml18-jtnn
 
 4.  hgraph2graph: https://github.com/wengong-jin/hgraph2graph
 
@@ -152,10 +151,12 @@ We thank the following Git repositories that gave me a lot of inspirations:
 
 7.  FragDGM: https://github.com/marcopodda/fragment-based-dgm
 
-8.  Guacamol: <https://github.com/BenevolentAI/guacamol_baselines>
+8.  CReM: https://github.com/DrrDom/crem
 
-9.  CReM: https://github.com/DrrDom/crem
+9.  AttentiveFP: https://github.com/OpenDrugAI/AttentiveFP
 
-10. AttentiveFP: https://github.com/OpenDrugAI/AttentiveFP
+10. Guacamol: https://github.com/BenevolentAI/guacamol\_baselines
 
-11. GPT2: <https://github.com/samwisegamjeee/pytorch-transformers>
+11. MOSES: https://github.com/molecularsets/moses
+
+12. GPT2: https://github.com/samwisegamjeee/pytorch-transformers
