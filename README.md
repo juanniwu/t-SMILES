@@ -1,5 +1,5 @@
-t-SMILES: A Scalable Fragment-based Molecular Representation Framework for De Novo Molecule Generation
-======================================================================================================
+t-SMILES: A Scalable Fragment-based Molecular Representation Framework
+======================================================================
 
 When using advanced NLP methodologies to solve chemical problems, two
 fundamental questions arise: 1) What are 'chemical words'? and 2) How can they
@@ -61,7 +61,7 @@ For example, the three t-SMILES codes of Celecoxib are:
 
 ![](media/09b674d2cd4e79f7a818db1f3f6e7e01.png)
 
-![](media/b9268f3bef0ce676d9463687a4b50738.png)
+![](media/58da2e28790384b86b220be7950459ba.png)
 
 ![](media/34a8f8377f10d43ce70e15df2e45709b.png)
 
