@@ -63,6 +63,8 @@ For example, the three t-SMILES codes of Celecoxib are:
 
 ![](media/b9268f3bef0ce676d9463687a4b50738.png)
 
+![](media/34a8f8377f10d43ce70e15df2e45709b.png)
+
 Here we provide the source code of our method.
 
 Dependencies
