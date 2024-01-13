@@ -65,12 +65,11 @@ For example, the three t-SMILES codes of Celecoxib are:
 
 ![](media/34a8f8377f10d43ce70e15df2e45709b.png)
 
-| Code        | Joint Point            | Frag Alg.                                            | Experiments                                                             | Relative Pros and Cons of TSSA, TSDY and TSID |
-|-------------|------------------------|------------------------------------------------------|-------------------------------------------------------------------------|-----------------------------------------------|
-| TSSA        | Shared Atom            | JTVAE, BRICS, MMPA, Scaffold, Hybrid                 | ChEMBL Zinc QM9 Low-Resource GPT, LSTM Transfer Learning Data Augmented | Highest reconstruction novelty score;         |
-| TSDY        | Dummy Atom, without ID | BRICS, MMPA, Scaffold, Hybrid                        | ChEMBL Zinc QM9 Goal-Oriented GPT, LSTM                                 | Medium reconstruction novelty score;          |
-| TSID        | Dummy Atom with ID     | BRICS, MMPA, Scaffold, Open-Ring, Hybrid             | ChEMBL Zinc QM9 Open-Ring GPT                                           | Almost zero reconstruction novelty score;     |
-| TS\_Vanilla |                        | ChEMBL Zinc QM9 Low-Resource Goal-Oriented GPT, LSTM | Classical SMILS in t-SMILES format                                      |                                               |
+| Code | Joint Point            | Frag Alg.                                | Experiments                                                             | Relative Pros and Cons of TSSA, TSDY and TSID |
+|------|------------------------|------------------------------------------|-------------------------------------------------------------------------|-----------------------------------------------|
+| TSSA | Shared Atom            | JTVAE, BRICS, MMPA, Scaffold, Hybrid     | ChEMBL Zinc QM9 Low-Resource GPT, LSTM Transfer Learning Data Augmented | Highest reconstruction novelty score;         |
+| TSDY | Dummy Atom, without ID | BRICS, MMPA, Scaffold, Hybrid            | ChEMBL Zinc QM9 Goal-Oriented GPT, LSTM                                 | Medium reconstruction novelty score;          |
+| TSID | Dummy Atom with ID     | BRICS, MMPA, Scaffold, Open-Ring, Hybrid | ChEMBL Zinc QM9 Open-Ring GPT                                           | Almost zero reconstruction novelty score;     |
 
 1.  Generative model without training;
 
