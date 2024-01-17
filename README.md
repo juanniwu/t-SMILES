@@ -11,6 +11,8 @@ second question. It describes molecules using SMILES-type strings obtained by
 performing a breadth-first search on a full binary tree formed from a fragmented
 molecular graph.
 
+**For more details, please refer to the paper.**
+
 Systematic evaluations using JTVAE, BRICS, MMPA, and Scaffold show that:
 
 1.  It can build a multi-code molecular description system, where various
@@ -129,8 +131,7 @@ following steps sequentially by running scripts:
 
 >   It reconstructs molecules form t-SMILES to generate classical SMILES.
 
-In this study, MolGPT, RNN, VAE, and AAE generative models are used for
-evaluation.
+In this study, MolGPT and RNN generative models are used for evaluation.
 
 Acknowledgement
 ===============
