@@ -95,9 +95,6 @@ Please make sure the following packages are installed:
 Usage
 =====
 
-For designing the novel drug molecules with t-SMILES, you should do the
-following steps sequentially by running scripts:
-
 1.  **DataSet/Graph/CNJTMol.py**
 
 >   encode\_single ()

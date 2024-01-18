@@ -1,27 +1,21 @@
-﻿
-import numpy as np
+﻿import numpy as np
 import pandas as pd
 from tqdm import tqdm
-
 import networkx as nx
 
 import rdkit.Chem as Chem
 
-from Tools.MathUtils import BCMathUtils
 from Tools.GraphTools import GTools
-
+from Tools.MathUtils import BCMathUtils
+from DataSet.STDTokens import CTokens
 from DataSet.JTNN.MolTree import Vocab, MolTree
 from DataSet.STDTokens import CTokens, STDTokens_Frag_File
-
 from DataSet.Graph.CNJMolUtil import CNJMolUtil
-from DataSet.Graph.CNXBinaryTree import CNXBinaryTree
-
+from DataSet.Graph.CNXBinaryTree import CNXBinaryTree        
 from MolUtils.RDKUtils.Frag.RDKFragUtil import Fragment_Alg
 
-
-           
 class CNJTMolTreeNode():
-    disconnect_char = '^'  #'.' is used in SMILES, '~'is used in SMARTS
+    disconnect_char = '^'  
     invalid_char = '&'
 
     def __init__(self, idx, nx_node):
@@ -67,15 +61,13 @@ class CNJTMolTreeNode():
 
         return
 
-    #def 
-#-----------------------------------------------------------------
      
 
 class CNJTMolTree(MolTree):        
     def __init__(self, smiles,
-                 jtvoc = None, #: Vocab
-                 ctoken = None, #: CTokens, 
-                 dec_alg = Fragment_Alg.Scaffold,
+                 jtvoc = None,
+                 ctoken = None, 
+                 dec_alg = Fragment_Alg.MMPA_DY,
                  kekuleSmiles = True,
                  ) -> None:
 
@@ -100,7 +92,7 @@ class CNJTMolTree(MolTree):
         return
 
     def init_from_smile(self, 
-                        smiles:str,  #one molecule
+                        smiles:str,  
                         jtvoc: Vocab,
                         ctoken: CTokens,
                         dec_alg = 'BRICS',
@@ -108,6 +100,9 @@ class CNJTMolTree(MolTree):
                         ):
         try:
             super(CNJTMolTree, self).__init__(smiles = smiles, dec_alg = dec_alg, kekuleSmiles = kekuleSmiles)
+               
+            if self.mol is None:
+                return 
 
             self.n_nodes = len(self.nodes)
 
@@ -116,32 +111,67 @@ class CNJTMolTree(MolTree):
             self.nx_child_map = {}
             self.nx_parent_map[0] = 0
 
-            self.graph_nx = self.convert_to_nx(show = True)
+            self.graph_nx = self.convert_to_nx(show = False)
 
-            self.bfs_idx = GTools.BFS(self.graph_nx)    #Breadth first         
-            self.dfs_idx = GTools.DFS(self.graph_nx )   #Depth-First Search
+            self.bfs_idx = GTools.BFS(self.graph_nx)      
+            self.dfs_idx = GTools.DFS(self.graph_nx )  
 
 
             self.build_relation(self.bfs_idx)
 
-            self.bfs_binary_tree = self.create_bfs_binary_tree_ex(show = True)
+            self.encoder_joint_points()
 
-            #self.bfs_binary_tree = self.create_bfs_binary_tree(show = True)
-            self.bfs_ex_nodeid, self.bfs_ex_vocids, self.bfs_ex_smiles, self.new_vocs = CNJTMolTree.get_bfs_ex(self.ctoken, 
-                                                                                                               self.bfs_binary_tree, 
-                                                                                                               extra_dummy = True)   #generate advanced bfs 
+            self.bfs_binary_tree = self.create_bfs_binary_tree_ex(show = False)
 
-            self.bfs_idx_ex = GTools.BFS(self.nx_binarytree)    #Breadth first         
-            self.dfs_idx_ex = GTools.DFS(self.nx_binarytree )   #Depth-First Search
+            self.bfs_ex_nodeid, self.bfs_ex_vocids, self.bfs_ex_smiles, self.new_vocs, self.bfs_ex_smarts = CNJTMolTree.get_bfs_ex(self.ctoken, 
+                                                                                                                                   self.bfs_binary_tree, 
+                                                                                                                                   extra_dummy = True)   #generate advanced bfs 
+
+            self.bfs_idx_ex = GTools.BFS(self.nx_binarytree)       
+            self.dfs_idx_ex = GTools.DFS(self.nx_binarytree )   
 
             if self.bfs_ex_vocids is None:
                 self.mol = None
             self.combine_ex_smiles, self.skeleton = CNJMolUtil.combine_ex_smiles(self.bfs_ex_smiles)
+            self.combine_ex_smarts, _             = CNJMolUtil.combine_ex_smiles(self.bfs_ex_smarts)
 
         except Exception as e:
-            print('init_from_smile Exception:', smiles)
-            print(e.args)
+            print('[CNJTMolTree.init_from_smile].Exception:', e.args)
+            print('[CNJTMolTree.init_from_smile].Exception:', smiles)
             self.mol = None
+
+        return 
+
+    def encoder_joint_points(self):
+        bfs_idx = self.bfs_idx
+        bfs_nodes = []     
+        dmy_id = 0
+        for i, cbd in enumerate(self.cut_bonds):
+            at_l = f'[{cbd[0]}*]'
+            at_r = f'[{cbd[1]}*]'
+
+            edge = self.edges[i]
+            node_l = self.nodes[edge[0]]
+            node_r = self.nodes[edge[1]]
+
+            if node_l.smarts.find(at_l) != -1:
+                node_l.smarts = node_l.smarts.replace(at_l, f'[x{dmy_id}*]')
+                node_r.smarts = node_r.smarts.replace(at_r, f'[x{dmy_id}*]')
+                dmy_id+= 1
+            elif node_l.smarts.find(at_r) != -1:
+                node_l.smarts = node_l.smarts.replace(at_r, f'[x{dmy_id}*]')
+                node_r.smarts = node_r.smarts.replace(at_l, f'[x{dmy_id}*]')
+                dmy_id+= 1
+            else:
+                print('[encoder_joint_points].Error:', cbd, self.smiles )
+
+        for node in self.nodes:
+            node.smarts = node.smarts.replace('[x','[')
+                    
+        for nidx in self.graph_nx.nodes:
+            nx_node = self.graph_nx.nodes[nidx]
+            nx_node['smarts'] = nx_node['jtnode'].smarts 
+
         return 
 
     def build_relation(self, bfs_idx):               
@@ -169,42 +199,6 @@ class CNJTMolTree(MolTree):
             self.nx_child_map[idx] = nbs
         return 
 
-    def find_visited_brother(self, node, parent, visited):
-        idx = parent.idx
-        nb_nodes = self.graph_nx.neighbors(idx)
-
-        point = self.bfs_node_map[idx]  
-
-        nbs = (list(self.neighbor_map[idx])).copy()
-
-        if point.parent is None:
-            return None
-        else:
-            if idx in self.nx_parent_map:
-                index = self.nx_parent_map[idx]
-            else:
-                index = -1
-
-            if index != -1:
-                nbs.pop(index)
-
-        pid = -1
-        last_visited = -1
-        brother = None
-        i = 0
-
-        index = BCMathUtils.find_index(self.bfs_idx, idx)
-        i = index
-        while i > 0:
-            i -= 1
-            pre = self.bfs_idx[i]
-            if pre in nbs:
-                last_visited = pre
-
-        if last_visited != -1:
-             brother = self.bfs_node_map[last_visited]
-
-        return brother
 
     def find_parent_node(self, idx, visited):
         nbs = self.neighbor_map[idx]
@@ -218,25 +212,22 @@ class CNJTMolTree(MolTree):
         if pid != -1:
             parent = self.bfs_node_map[pid]
         else:
-            parent = self.bfs_node_map[idx]  #parent is itself
+            parent = self.bfs_node_map[idx] 
 
-        self.nx_parent_map[idx] = parent.idx   #
+        self.nx_parent_map[idx] = parent.idx   
         return parent
 
     def create_bfs_binary_tree_ex(self, show = False):
-        #self.nx_parent_map = {}
-        #self.nx_child_map = {}
- 
         self.nx_binarytree = CNXBinaryTree()  #DiGraph
          
         visited = np.zeros((self.n_nodes))
 
         self.bfs_idx_ex = []
-        self.bfs_node_map = {}   #not the same as self.bfs_idx
+        self.bfs_node_map = {}   
     
         idx = 0
         nx_node = self.graph_nx.nodes[idx]
-        self.bfs_binary_tree = CNJTMolTreeNode(idx=idx, nx_node=nx_node)  #the first node
+        self.bfs_binary_tree = CNJTMolTreeNode(idx=idx, nx_node=nx_node)  
         self.bfs_node_map[idx] = self.bfs_binary_tree
         visited[idx] = 1
 
@@ -253,12 +244,13 @@ class CNJTMolTree(MolTree):
             self.nx_binarytree.add_node(idx, 
                                         nid   = idx,
                                         smile = nx_node['smile'],
-                                        data  = bfs_node
+                                        data  = bfs_node,
+                                        smarts = nx_node['smarts'],
                                         )              
 
         for idx in self.nx_child_map:
             nbs = self.nx_child_map[idx]
-            if len(nbs) == 0: #no child
+            if len(nbs) == 0: 
                  visited[idx]  = 1
             else:
                 child_idx = nbs[0]
@@ -275,91 +267,21 @@ class CNJTMolTree(MolTree):
 
                 for i in range(1, len(nbs)):
                     b_idx = nbs[i]
-                    self.nx_binarytree.add_edge_right(point.idx, b_idx)  #nx_binarytree left
+                    self.nx_binarytree.add_edge_right(point.idx, b_idx)  
 
                     brother = self.nx_binarytree.nodes[b_idx]['data']
                     point = point.add_right(brother) 
 
                     visited[b_idx]  = 1
-        #if show:          
-        #   GTools.show_network_g_cnjtmol(self.nx_binarytree)
 
         self.nx_binarytree.make_full()
 
         for idx in self.bfs_idx:
             self.bfs_node_map[idx] = self.nx_binarytree.nodes[idx]['data']
 
-        #if show:          
-        #   GTools.show_network_g_cnjtmol(self.nx_binarytree)
 
         self.bfs_binary_tree = self.nx_binarytree.nodes[0]['data']
-        return self.bfs_binary_tree #the first node
-
-
-    def binarytree_to_tree(bfs_binary_tree, clean_up = True, show = False): #works fine
-        #self.nx_binarytree
-        #bfs_binary_tree = self.nx_binarytree.nodes[0]['data']
-        g = nx.DiGraph()
-
-        queue = []
-        point = bfs_binary_tree
-        queue.append(point)
-       
-        bfs_ex_nodeid = []
-        node_map = {}
-        dummy_ids = []
-
-        while len(queue) != 0:
-            item = queue.pop(0)
-
-            if item is not None:
-                queue.append(item.left)
-                queue.append(item.right)
-
-            if item is not None:  
-                bfs_ex_nodeid.append(item.idx)  #to verify 
-                node_map[item.idx] = item
-                
-                g.add_node(item.idx, 
-                            nid   = item.idx,
-                            smile = item.data['smile'],
-                            data  = item
-                            )
-                if item.data['smile']  == '&':
-                    dummy_ids.append(item.idx)
-
-        for idx in bfs_ex_nodeid:
-            node  = node_map[idx]
-            left = node.left
-            if left is not None:
-                if clean_up:
-                    if left.data['smile'] != '&':
-                        g.add_edge(node.idx, left.idx)
-                else:
-                    g.add_edge(node.idx, left.idx)
-
-                right = left.right                
-                while right is not None:
-                    if clean_up:
-                        if right.data['smile'] != '&':
-                            g.add_edge(node.idx, right.idx)
-                    else:
-                        g.add_edge(node.idx, right.idx)
-
-                    right = right.right
-
-        #clean up
-        if clean_up:
-            dummy_ids.sort(reverse = True)
-
-            for idx in dummy_ids:
-                if g.nodes[idx]['smile'] == '&':
-                    g.remove_node(idx)
-
-        #if show:          
-        #   GTools.show_network_g_cnjtmol(g)
-
-        return g
+        return self.bfs_binary_tree 
 
 
     def create_bfs_binary_tree(self, show=False):  #
@@ -371,7 +293,7 @@ class CNJTMolTree(MolTree):
         self.nx_binarytree = CNXBinaryTree()
 
         visited = np.zeros((self.n_nodes))
-        self.bfs_node_map = {}   #not the same as self.bfs_idx
+        self.bfs_node_map = {}   
 
         idx = 0
         nx_node = self.graph_nx.nodes[idx]
@@ -385,18 +307,17 @@ class CNJTMolTree(MolTree):
         if len(self.bfs_idx) == 1:
             self.nx_binarytree.add_node(0, 
                                        smile  = self.bfs_node_map[0].data['smile'],
-                                       nid  = 0
-                                        )
+                                       nid  = 0,
+                                       smarts = self.bfs_node_map[0].data['smarts'],
+                                       )
 
         for i in range(0, len(self.bfs_idx)) :
             idx = self.bfs_idx[i]
             neighbors = self.neighbor_map[idx]
 
-            if visited[idx] == 1 and len(neighbors) <= 2:  # = 2: two neighbors, one is parent, one is child, if 1 then only a parent
-                #point = self.bfs_node_map[idx]
+            if visited[idx] == 1 and len(neighbors) <= 2: 
                 continue
 
-            #if visited[idx] == 0:
             parent = self.find_parent_node(idx, visited)
             if parent.idx != idx:
                 nx_node = self.graph_nx.nodes[idx]
@@ -405,12 +326,11 @@ class CNJTMolTree(MolTree):
                 self.bfs_node_map[idx] = bfs_node
                 visited[idx] = 1
 
-                self.nx_binarytree.add_edge_left(parent.idx, bfs_node.idx)  #nx_binarytree left
+                self.nx_binarytree.add_edge_left(parent.idx, bfs_node.idx)  
 
             first = True
             for nb in neighbors:
                 if visited[nb] == 1:
-                    #point = self.bfs_node_map[nb]
                     continue
 
                 visited[nb] = 1
@@ -419,19 +339,14 @@ class CNJTMolTree(MolTree):
                 self.bfs_node_map[nb] = bfs_node
 
                 if first:
-                    nbpoint = point.add_left(bfs_node)   #child
+                    nbpoint = point.add_left(bfs_node)   
                     first = False
-                    #point = nbpoint
-
-                    self.nx_binarytree.add_edge_left(point.idx, bfs_node.idx)  #nx_binarytree left
-
+                    self.nx_binarytree.add_edge_left(point.idx, bfs_node.idx) 
                 else:
-                    self.nx_binarytree.add_edge_right(nbpoint.idx, bfs_node.idx)  #nx_binarytree left
-                    
-                    nbpoint = nbpoint.add_right(bfs_node)  #brother in JTVAE  
+                    self.nx_binarytree.add_edge_right(nbpoint.idx, bfs_node.idx)                      
+                    nbpoint = nbpoint.add_right(bfs_node)  
                                     
 
-        #update binarytree
         for node in self.nx_binarytree.nodes:
             idx = node
             if isinstance(idx, CNJTMolTreeNode):
@@ -442,15 +357,10 @@ class CNJTMolTree(MolTree):
 
         self.nx_binarytree.make_full()
 
-        #if show:          
-        #   GTools.show_network_g_cnjtmol(self.nx_binarytree)
                     
         return self.bfs_binary_tree
 
-    def get_bfs_ex(ctoken, bfs_binary_tree, extra_dummy = True): #should be get_bfs_ex
-        #get bfs list from full binary tree using queue 
-        #
-        #bfs_idx= [0, 11, 1, 6, 8, 10, 2, 3, 4, 7, 9, 5]
+    def get_bfs_ex(ctoken, bfs_binary_tree, extra_dummy = True):
         queue = []
 
         point = bfs_binary_tree
@@ -459,6 +369,7 @@ class CNJTMolTree(MolTree):
         bfs_ex_nodeid = []
         bfs_ex_vocid = []
         bfs_ex_smiles = []
+        bfs_ex_smarts = []
         new_vocs = []
 
         try:
@@ -473,18 +384,17 @@ class CNJTMolTree(MolTree):
                         sml = item.data['smile']
                         if Chem.MolFromSmiles(sml) is not None:
                             new_vocs.append(sml)
-                    #    return None, None, None
 
-                    bfs_ex_nodeid.append(item.idx)  #to verify 
+                    bfs_ex_nodeid.append(item.idx)  
                     bfs_ex_vocid.append(item.data['idx_voc'])
                     bfs_ex_smiles.append(item.data['smile'])
+                    bfs_ex_smarts.append(item.data['smarts'])
                 else:
-                    #add a dummy:
                     bfs_ex_nodeid.append('p')
-                    #bfs_ex_vocids.append(CNJTMolTree.dummy_node['idx_voc'])
-                    #bfs_ex_smiles.append(CNJTMolTree.dummy_node['smile'])
+
                     bfs_ex_vocid.append(ctoken.invalid_index)
                     bfs_ex_smiles.append(ctoken.invalid_token)
+                    bfs_ex_smarts.append(ctoken.invalid_token)
 
                 queue.pop(0)
             #end while
@@ -493,10 +403,12 @@ class CNJTMolTree(MolTree):
                 bfs_ex_nodeid.insert(1, 'p')
                 bfs_ex_vocid.insert(1, ctoken.invalid_index)
                 bfs_ex_smiles.insert(1, ctoken.invalid_token)
+                bfs_ex_smarts.insert(1, ctoken.invalid_token)
 
-            return bfs_ex_nodeid, bfs_ex_vocid, bfs_ex_smiles, new_vocs
-        except:
-            return None, None, None, None
+            return bfs_ex_nodeid, bfs_ex_vocid, bfs_ex_smiles, new_vocs, bfs_ex_smarts
+        except Example as e:
+            print('[CNJTMolTree.get_bfs_ex].Exception', e.args)
+            return None, None, None, None, None
 
     def bfs_ex_reconstruct(ctoken, bfs_ex_id = None, bfs_ex_smiles = None, clean_up = True, show = False):
         if bfs_ex_id is None and bfs_ex_smiles is None:
@@ -511,9 +423,8 @@ class CNJTMolTree(MolTree):
             if not CNJMolUtil.is_dummy(bfs_ex_smiles[i]):                
                 bfs_ex_smiles[i] = CNJMolUtil.valid_smiles(bfs_ex_smiles[i], ctoken = ctoken)
 
-        if nlen >  1 and bfs_ex_smiles[1] == ctoken.invalid_token:  #jump this dummy one
+        if nlen >  1 and bfs_ex_smiles[1] == ctoken.invalid_token: 
             bfs_ex_smiles.pop(1)
-            #bfs_ex_smiles.remove(1)
 
         if bfs_ex_id is None:
             bfs_ex_id = []
@@ -539,7 +450,8 @@ class CNJTMolTree(MolTree):
                        nid  = i,  
                        is_leaf = False,
                        idx_voc = bfs_ex_id[i],
-                       jtnode = None
+                       jtnode = None,
+                       smarts = bfs_ex_smiles[i],
                        )
                        
             if bfs_ex_smiles[i]  == '&':
@@ -551,12 +463,11 @@ class CNJTMolTree(MolTree):
         idx = 0
         t_id = bfs_ex_id[0]
         sml = bfs_ex_smiles[0]
-        bfs_tree = CNJTMolTreeNode(idx = idx, nx_node = g.nodes[idx])  #the first node
+        bfs_tree = CNJTMolTreeNode(idx = idx, nx_node = g.nodes[idx])  
         bfs_node_map[idx] = bfs_tree
         idx+=1
 
         edged_ids.append(0)
-        #parent = bfs_tree
 
         if nlen == 1 or nlen == 2:
             return bfs_tree, g, bfs_node_map
@@ -565,7 +476,7 @@ class CNJTMolTree(MolTree):
 
         t_id_1 = bfs_ex_id[1]
         sml_1 = bfs_ex_smiles[1]
-        if sml_1 == ctoken.invalid_token:  #jump this dummy one
+        if sml_1 == ctoken.invalid_token:
             idx += 1
 
         try:
@@ -582,37 +493,30 @@ class CNJTMolTree(MolTree):
                 tid_right = bfs_ex_id[i+1]
                 sml_right = bfs_ex_smiles[i+1]
 
-                node_left = CNJTMolTreeNode(idx = idx, nx_node=g.nodes[idx])  #the first node
+                node_left = CNJTMolTreeNode(idx = idx, nx_node=g.nodes[idx]) 
                 bfs_node_map[idx] = node_left
                 idx+=1
                 node = parent.add_left(node_left)
-                g.add_edge_left(parent.idx, node.idx)  #nx_binarytree left
+                g.add_edge_left(parent.idx, node.idx) 
                 edged_ids.append(parent.idx)
                 edged_ids.append(node.idx)
 
-                #-------------------
-                node_right = CNJTMolTreeNode(idx = idx, nx_node=g.nodes[idx])  #the first node                           
+                node_right = CNJTMolTreeNode(idx = idx, nx_node=g.nodes[idx])                     
                 bfs_node_map[idx] = node_right
                 idx+=1
                 node = parent.add_right(node_right)
-                g.add_edge_right(parent.idx, node.idx)  #nx_binarytree left
+                g.add_edge_right(parent.idx, node.idx) 
                 edged_ids.append(parent.idx)
                 edged_ids.append(node.idx)
 
-                #if sml_left != ctoken.invalid_token:#'&':  #this is dummy_token 
-                if tid_left != ctoken.invalid_index:#'&':  #this is dummy_token 
+                if tid_left != ctoken.invalid_index:
                     queue.append(node_left)
-                if tid_right != ctoken.invalid_index:#'&':  #this is dummy_token 
+                if tid_right != ctoken.invalid_index:
                     queue.append(node_right)                
 
         except Exception as e:
-            print('[bfs_ex_reconstruct Exception!]-ignore!')
-            print(e.args)
+            msg = e.args
   
-        #if show:          
-        #   GTools.show_network_g_cnjtmol(g)
-
-        #clean up
         if clean_up:
             edged_ids = set(edged_ids)
             all_ids = set([*range(0, len(g.nodes), 1)])
@@ -622,7 +526,6 @@ class CNJTMolTree(MolTree):
             for idx in dummy_ids:
                     g.remove_node(idx)
 
-        #reorder ids:
         i = 0
         id_map = {}
         for idx in bfs_node_map:
@@ -640,39 +543,9 @@ class CNJTMolTree(MolTree):
         for nid in g.nodes():
             g.nodes[nid]['nid'] = nid
 
-        #if show:
-        #   GTools.show_network_g_cnjtmol(g)
           
         return bfs_tree, g, bfs_node_map
 
-    def reorder_bfs_tree(bfs_binary_tree, id_map):
-        queue = []
-        point = bfs_binary_tree
-        queue.append(point)
-       
-
-        while len(queue) != 0:
-            item = queue.pop(0)
-
-            if item is not None:
-                queue.append(item.left)
-                queue.append(item.right)
-
-            item.idx = id_map[item.idx]
-
-        return 
-
-
-    def convert_to_smiles(ctoken, bfs_binary_tree):
-        smile = ''
-
-        return smile
-
-    def get_node_by_nid(self, nid):
-        for node in self.nodes:
-            if node.nid == nid:
-                return node
-        return None
 
     def convert_to_nx(self, show = False):
         g = nx.Graph()
@@ -682,10 +555,11 @@ class CNJTMolTree(MolTree):
             g.add_node(i, 
                        smile = node.smiles, 
                        clique = node.clique, 
-                       nid = node.nid,  #this is 1 based, zero for end node
+                       nid = node.nid,  
                        is_leaf = node.is_leaf,
                        idx_voc = self.ctoken.get_index(node.smiles),
-                       jtnode = node
+                       jtnode = node,
+                       smarts = node.smarts,
                        )
 
         for i, node in enumerate(self.nodes):
@@ -697,278 +571,220 @@ class CNJTMolTree(MolTree):
                 g.add_edge(start, end)
                 nbs.append(end)
 
-            self.neighbor_map.append(nbs)
+        span_g = nx.minimum_spanning_tree(g)  
+        if len(g.edges) != len(span_g.edges):
+            print('[convert_to_nx] remove circle:', self.smiles)
 
-        #T = nx.minimum_spanning_tree(g)
+        self.edges = list(span_g.edges)
+        self.neighbor_map = [()] * len(self.nodes)
 
-        #if show:
-        #    GTools.show_network_g_cnjtmol(g)
+        for (s,e) in self.edges:
+            sbm = set(self.neighbor_map[s])
+            sbm.add(e)
+            self.neighbor_map[s] = sbm
 
-        return g
-
-    def convert_to_nx_binarytree(self, show = False):
-        bt = nx.DiGraph()
-        n_nodes = len(self.nodes)
-
-        for i, node in enumerate(self.nodes):
-            bt.add_node(i, smile = node.smiles, 
-                       clique = node.clique, 
-                       nid = node.nid,  #this is 1 based, zero for end node
-                       is_leaf = node.is_leaf,
-                       idx_voc = self.ctoken.get_index(node.smiles),
-                       jtnode = node
-                       )
+            sbm = set(self.neighbor_map[e])
+            sbm.add(s)
+            self.neighbor_map[e] = sbm
 
         for i, node in enumerate(self.nodes):
-            start = node.nid - 1
-            nblist = node
-            nbs = []
-            for nb in node.neighbors:
-                end = nb.nid - 1
-                bt.add_edge(start, end)
-                nbs.append(end)
+            nbm = self.neighbor_map[i]      
+            node.neighbors = []
+            for nid in nbm:
+                node.neighbors.append(self.nodes[nid])
 
-            self.neighbor_map.append(nbs)
+            node.is_leaf = (len(node.neighbors) == 1)        
 
-        #if show:
-        #    GTools.show_network_g_cnjtmol(bt)
-
-        return g
-
-    def onehot_code(inputx, ctoken, maxlen, start_end = True, pad = True):
-        if start_end:
-            inputx.insert(0, ctoken.start_index)
-            inputx.append(ctoken.end_index)
-      
-        nlen = len(inputx)
-
-        if pad:
-            if nlen > maxlen:
-                raise ValueError('get_oh_code error')
-
-            #inputx = np.pad(inputx, (0, maxlen - len(bfs_ex)), mode='constant', constant_values=CNJTMolTree.PAD_INDEX)
-            inputx = np.pad(inputx, (0, maxlen - len(inputx)), mode='constant', constant_values=ctoken.pad_index)
-
-        ohcode = []
-        for s in inputx:
-            oh = np.zeros(ctoken.n_tokens, dtype=np.int32)
-            oh[int(s)] = 1
-            ohcode.append(oh)
-
-        return np.array(ohcode)
-        
-    def onehot_decode(ohcode):
-        nlen = len(ohcode)
-        bfs_ex = []
-
-        for oh in ohcode:
-            pos = np.argmax(oh)
-            bfs_ex.append(pos)
-
-        return bfs_ex
-
-    def onehot_decode_token(ohcode, ctoken):
-        nlen = len(ohcode)
-        bfs_ex_token = []
-
-        for oh in ohcode:
-            pos = np.argmax(oh)
-            
-            tk = ctoken.get_token(pos)
-            bfs_ex_token.append(tk)
-
-        return bfs_ex_token
-
-    def dfs_jt_nx(jtmoltree: MolTree,):
-        return
-
-    def read_dfc_csv(filename, ctoken, pad = True, oh = True):
-        data = pd.read_csv(filename, header = None).values
-
-        max_len = 0
-        dfs_list = []
-        for item in tqdm(data, total = len(data)):
-            error = False
-            code = []
-            for d in item:
-                if str(d) != 'nan':  #pandas 'nan'
-                    d = int(d)
-                    if d == -1:
-                       error = True
-                       break
-                    else:
-                        code.append(d)
-                else:
-                    break
-
-            if not error:
-                dfs_list.append(code)
-                if len(code)> max_len:
-                    max_len = len(code)
-
-        print(f'====Reading file done: max_len + 4  = {max_len + 4}, total = {len(dfs_list)}')   
-
-        xcode = []
-        ycode = []
-        max_len =  max_len + 4  #4 means: ' ', '<', '>', '&'
-        if oh:
-            for i in range(len(dfs_list)):
-                bfs_ex = dfs_list[i]
-                ohcode = CNJTMolTree.onehot_code(ctoken = ctoken, inputx = bfs_ex, maxlen = max_len, start_end = True, pad = True)
-                x = ohcode[0:-1,:]
-                y =  ohcode[1:,:]
-                xcode.append(x)
-                ycode.append(y)
-
-        else:
-            for i in range(len(dfs_list)):
-                bfs_ex = dfs_list[i]
-                if pad:
-                    bfs_ex = np.pad(bfs_ex, (0, max_len - len(bfs_ex)), mode='constant', constant_values = ctoken.pad_index)
-
-                x = bfs_ex[0:-1]
-                y = bfs_ex[1:]
-                xcode.append(x)
-                ycode.append(y)
-          
-        return np.array(xcode), np.array(ycode), max_len
+        return span_g      
 
 
-def test():
-    smls = 'CC(C)CC1=C(CC(C)C)[AlH2+]1.CCCCCCCCCCCCCCCCNc1ccc(C#N)c(F)c1.CO.Cc1ccccc1.[H-]'
-
-    #Vanilla    = CC(C)CC1=C(CC(C)C)[Al+]1&CCCCCCCCCCCCCCCCNC1=CC=C(C#N)C(F)=C1&CO&CC1=CC=CC=C1&[HH2-]&&&    
-    #JTVAE      = CC&C&CC&&CC^CC&C1=C[Al+]1&CC&CC&C&CC&&CC&CC^CC&CC&CC&CC&CC&CC&CC&CC&CC&CC&CC&CC&CC&CC&CN&CN&C1=CC=CC=C1&CC&C#N^CF&&&CO^CC&C1=CC=CC=C1&[HH2-]&&&
-    #BRICS      = CC&C&CC&&CC^CC&C1=C[Al+]1&CC&CC&C&CC&&CC&C1=CC=CC=C1^CN&CN^CC^CC&C#N^CF^CC&&&CO&CC&CC&CC&C1=CC=CC=C1&CC&[HH2-]&CC&&&CC&CC&CC&CC&CC&CC&CC&CC&CC&&&
-    #BRICS_Base = CC(C)CC1=C(CC(C)C)[Al+]1&CCCCCCCCCCCCCCCC&CN&N#CC1=CC=C(N)C=C1F&&CO^CC1=CC=CC=C1&[HH2-]&&&
-    #MMPA       = CC&C&CC&&CC^CC^C1=CC=CC=C1^CC(C)CC1=C[Al+]1&CN&&&CN^CC^CC&C#N^CF^CC&&&CO&CC&C1=CC=CC=C1&CC&CC&CC&[HH2-]&CC&&&CC&CC&CC&CC&CC&CC&CC&CC&CC&&&
-    #Scaffold   = CC(C)C&CC&C1=C[Al+]1&CC&CC(C)C&&CCCCCCCCCCCCCCCCN^CN&C1=CC=CC=C1&CC&C#N^CF&&CO&C1=CC=CC=C1&CC&[HH2-]&&&
-    #========================================================
-    
-    dec_alg = Fragment_Alg.Vanilla
-    #dec_alg = Fragment_Alg.JTVAE
-    #dec_alg = Fragment_Alg.BRICS
-    #dec_alg = Fragment_Alg.BRICS_Base
-    #dec_alg = Fragment_Alg.MMPA
-    #dec_alg = Fragment_Alg.Scaffold
-
-
-    print('[seed is]:', smls)
-    print('[dec_alg is]:', dec_alg.name)
-    #------------------------------------------------------
-    maxlen = 256
-    vocab_file = r'H:\GitHub\t-SMILES\RawData\QM9\JTVAE\QM9.smi.[JTVAE][24]_token.voc.smi'
-
-    ctoken = CTokens(STDTokens_Frag_File(vocab_file), is_pad = True, pad_symbol = ' ', startend = True,
-                     max_length = maxlen,  flip = False, invalid = True, onehot = False)
-
-     #----------    
-    cnjtmol = CNJTMolTree(smls, ctoken = ctoken, dec_alg = dec_alg)
-    if cnjtmol is  None:
-        print('cnjtmol is None')
+class CNJMolUtils:
+    def encode_single(smls, ctoken, dec_alg):
+        #print('[smls is]:', smls)
+        try:
+            sub_smils = smls.strip().split('.')  #for reaction
+            combine_sml = []
+            combine_smt = []
+            for sml in sub_smils:
+                cnjtmol = CNJTMolTree(sml, ctoken = ctoken, dec_alg = dec_alg)
+                if cnjtmol is  None:
+                    print('cnjtmol is None')
      
-    bfs_ex_smiles = cnjtmol.bfs_ex_smiles
-    print('bfs_ex_smiles=', bfs_ex_smiles)
+                bfs_ex_smiles = cnjtmol.bfs_ex_smiles
+                bfs_ex_smarts = cnjtmol.bfs_ex_smarts
 
-    s, skeleton = CNJMolUtil.combine_ex_smiles(bfs_ex_smiles)
-    words = CNJMolUtil.split_ex_smiles(s)
-    print('combine_ex_smiles=', s)
-    print('words=',words)
+                atom_env = cnjtmol.atom_env
+                s, skeleton = CNJMolUtil.combine_ex_smiles(bfs_ex_smiles)
+                combine_sml.append(s)
+     
+                s, skeleton = CNJMolUtil.combine_ex_smiles(bfs_ex_smarts)
+                combine_smt.append(s)
 
-    return 
+                words = CNJMolUtil.split_ex_smiles(s)
+
+            combine_sml = '.'.join(s for s in combine_sml)  
+            combine_smt = '.'.join(s for s in combine_smt)
+        except Exception as e:
+            print('[CNJMolUtils.encode_single].exception:', e.args)
+            combine_sml = 'CC&&&'
+            combine_smt = 'CC&&&'
+
+        return combine_sml, combine_smt
 
 
 def preprocess():
-
-    maxlen = 256
-    vocab_file = r'H:\GitHub\t-SMILES\RawData\AID1706\active\Scaffold\active_smiles.smi.[Scaffold][24]_token.voc.smi'
-
-    ctoken = CTokens(STDTokens_Frag_File(vocab_file), is_pad = True, pad_symbol = ' ', startend = True,
-                     max_length = maxlen,  flip = False, invalid = True, onehot = False)
-    #-----------------------------------------------------------------------------------
-    smlfile = r'H:\GitHub\t-SMILES\RawData\AID1706\active.smi'
-
-    #------------------------------------------------------   
-    #dec_algs = [Fragment_Alg.Vanilla]
-    #dec_algs = [Fragment_Alg.JTVAE]
-    #dec_algs = [Fragment_Alg.BRICS]
-    #dec_algs = [Fragment_Alg.BRICS_Base]
-    #dec_algs = [Fragment_Alg.MMPA]
-    dec_algs = [Fragment_Alg.Scaffold]
-
-    bfs_smile_list = []
-    bfs_smile_list_join = []
-    org_smile_list = []
-    bfs_max_Len = 0
-    vocab_list = set()
-    skt_list = set()
     
-    df = pd.read_csv(smlfile, squeeze=True, delimiter=',',header = None) 
+
+    dec_algs = [
+                Fragment_Alg.Vanilla,
+                Fragment_Alg.JTVAE,
+                Fragment_Alg.BRICS,
+                Fragment_Alg.BRICS_Base,
+                Fragment_Alg.MMPA,
+                Fragment_Alg.Scaffold,
+                Fragment_Alg.BRICS_DY,
+                Fragment_Alg.MMPA_DY,
+                Fragment_Alg.Scaffold_DY,
+                #Fragment_Alg.RBrics_DY,
+                ]
+
+    #kekuleSmiles = False
+    kekuleSmiles = True
+  
+    ctoken = CTokens(STDTokens_Frag_File(None), max_length = 256,   invalid = True, onehot = False)
+
+    smlfile = r'../RawData/Chembl/Test/Chembl_test.smi'
+    print(smlfile)
+    df = pd.read_csv(smlfile, squeeze=True, delimiter=',',header = None, skip_blank_lines = True) 
     smiles_list = list(df.values)
 
     for dec_alg in dec_algs:
-        print(f'----------[{dec_alg.name}]-------------')
+        bfs_ex_list = []
+        bfs_smile_list = []
+        bfs_smile_list_join = []
+        bfs_smarts_list_join = []
+        org_smile_list = []
+        bfs_max_Len = 0
+        vocab_list = set()
+        skt_list = set()
+        atom_env_list = []
+
         save_prex = dec_alg.name
 
         for i, sml in tqdm(enumerate(smiles_list), total = len(smiles_list),  desc = 'parsing smiles ...'):
-            if sml is None or str(sml) == 'nan' or len(sml) > maxlen:
+            #print(sml)
+            if sml is None or str(sml) == 'nan' :
                 continue
+            sml = ''.join(sml.strip().split(' '))
+
         
+            sub_smils = sml.strip().split('.')  
             try:
-                cnjtmol = CNJTMolTree(sml, ctoken = ctoken, dec_alg = dec_alg)
+                org_smile_sub = ''
+                bfs_smile_list_sub = []
+                bfs_smart_list_sub = []
+                joined_sub_smiles = ''
+                joined_sub_smarts = ''
+                skeleton_sub = ''
 
-                if cnjtmol.mol is not None:
-                    for c in cnjtmol.nodes:
-                        vocab_list.add(c.smiles)
+                joined_smiles = None
+                for i, sub_s in enumerate(sub_smils):
+                    cnjtmol = CNJTMolTree(sub_s, ctoken = ctoken, dec_alg = dec_alg) 
 
-                    org_smile_list.append(sml)
+                    if cnjtmol.mol is not None:
+                        for c in cnjtmol.nodes:
+                            vocab_list.add(c.smiles)
 
-                    bfs_smile_list.append(cnjtmol.bfs_ex_smiles)            
 
-                    smil = list(filter(None, cnjtmol.bfs_ex_smiles))
-                    joined, skeleton = CNJMolUtil.combine_ex_smiles(cnjtmol.bfs_ex_smiles)
+                        joined_smiles, skeleton = CNJMolUtil.combine_ex_smiles(cnjtmol.bfs_ex_smiles)
+                        joined_smarts, _        = CNJMolUtil.combine_ex_smiles(cnjtmol.bfs_ex_smarts)
+  
+                        if i > 0:
+                            org_smile_sub   += '.'
+                            bfs_smile_list_sub.extend(['.'])
+                            bfs_smart_list_sub.extend(['.'])
+                            joined_sub_smiles   += '.'
+                            joined_sub_smarts   += '.'
+                            skeleton_sub        += '.'
 
-                    bfs_smile_list_join.append(joined)
-                    skt_list.add(skeleton)
+                        org_smile_sub = org_smile_sub + sub_s
+                        bfs_smile_list_sub.extend(cnjtmol.bfs_ex_smiles)
+                        bfs_smart_list_sub.extend(cnjtmol.bfs_ex_smarts)
+
+                        joined_sub_smiles = joined_sub_smiles + joined_smiles
+                        joined_sub_smarts = joined_sub_smarts + joined_smarts
+
+                        skeleton_sub = skeleton_sub + skeleton
+                        
+                        if cnjtmol.atom_env is not None:
+                            atom_env_list.extend(cnjtmol.atom_env)
+
+                if joined_smiles is None:
+                    continue
+
+                joined_smiles = joined_smiles.strip()
+
+                org_smile_list.append(org_smile_sub)
+                bfs_smile_list.append(bfs_smile_list_sub)     
                 
-                    if len(cnjtmol.bfs_ex_vocids) > bfs_max_Len:
-                        bfs_max_Len = len(cnjtmol.bfs_ex_smiles)
+                bfs_smile_list_join.append(joined_sub_smiles)
+                bfs_smarts_list_join.append(joined_sub_smarts)
 
-            except:
-                print('preprocess exception:', sml)
-                continue    
+                skt_list.add(skeleton_sub)
+                
+                if len(joined_sub_smarts) > bfs_max_Len:
+                    bfs_max_Len = len(joined_sub_smarts)
 
+            except Exception as e:
+                print('[CNJTMol.preprocess].Exception:', e.args)
+                print('[CNJTMol.preprocess].Exception:', sml)
+                continue
+    
        
-    ctoken.maxlen = bfs_max_Len + 4  #
+        ctoken.maxlen = bfs_max_Len + 4  #
        
-    vocab = sorted(vocab_list)
-    output = smlfile + f'.[{save_prex}][{bfs_max_Len}]_token.voc.smi'
-    df = pd.DataFrame(vocab)
-    df.to_csv(output, index = False, header=False, na_rep="NULL")
 
-    #output = smlfile + f'.bfs[{bfs_max_Len}]_org.csv'          #
-    output = smlfile + f'.[{save_prex}][{bfs_max_Len}]_org.csv'
-    df = pd.DataFrame(org_smile_list)
-    df.to_csv(output, index = False, header=False, na_rep="NULL")
+        vocab = sorted(vocab_list)
+        output = smlfile + f'.[{save_prex}][{bfs_max_Len}]_token.voc.smi'
+        df = pd.DataFrame(vocab)
+        df.to_csv(output, index = False, header=False, na_rep="NULL")
 
-    output = smlfile + f'.[{save_prex}][{bfs_max_Len}]_join.csv'
-    df = pd.DataFrame(bfs_smile_list_join)
-    df.to_csv(output, index = False, header=False, na_rep="NULL")
- 
-    skt_list = list(skt_list)
-    skt_list.sort()
-    output = smlfile + f'.[{save_prex}][{bfs_max_Len}]_skt.csv'
-    df = pd.DataFrame(skt_list)
-    df.to_csv(output, index = False, header=False, na_rep="NULL")
-    print('[skt_list]:',len(skt_list))
+        output = smlfile + f'.[{save_prex}][{bfs_max_Len}]_org.csv'
+        df = pd.DataFrame(org_smile_list)
+        df.to_csv(output, index = False, header=False, na_rep="NULL")
+
+        skt_list = list(skt_list)
+        skt_list.sort()
+        output = smlfile + f'.[{save_prex}][{bfs_max_Len}]_skt.csv'
+        df = pd.DataFrame(skt_list)
+        df.to_csv(output, index = False, header=False, na_rep="NULL")
+        print('[skt_list]:',len(skt_list))
+
+        if dec_alg in [Fragment_Alg.JTVAE,
+                       Fragment_Alg.BRICS,
+                       Fragment_Alg.BRICS_Base,
+                       Fragment_Alg.MMPA,
+                       Fragment_Alg.Scaffold
+                       ]:
+            output = smlfile + f'.[{save_prex}][{bfs_max_Len}]_TSSA.csv'
+            df = pd.DataFrame(bfs_smile_list_join)
+            df.to_csv(output, index = False, header=False, na_rep="NULL")
+        elif dec_alg in [Fragment_Alg.BRICS_DY,                          
+                         Fragment_Alg.MMPA_DY, 
+                         Fragment_Alg.Scaffold_DY , 
+                         Fragment_Alg.RBrics_DY
+                         ]:
+            output = smlfile + f'.[{save_prex}][{bfs_max_Len}]_TSDY.csv'
+            df = pd.DataFrame(bfs_smile_list_join)
+            df.to_csv(output, index = False, header=False, na_rep="NULL")
+   
+            output = smlfile + f'.[{save_prex}][{bfs_max_Len}]_TSID.csv'
+            df = pd.DataFrame(bfs_smarts_list_join)
+            df.to_csv(output, index = False, header=False, na_rep="NULL")
+        else: #Fragment_Alg.Vanilla
+            output = smlfile + f'.[{save_prex}][{bfs_max_Len}]_TSV.csv'
+            df = pd.DataFrame(bfs_smile_list_join)
+            df.to_csv(output, index = False, header=False, na_rep="NULL")
+
 
     return
-
-if __name__ == '__main__':
-
-    test()
-
-    #preprocess()
-
-
-

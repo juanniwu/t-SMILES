@@ -1,27 +1,14 @@
 from builtins import str
 import numpy as np
-import re
-
-import torch
 
 from DataSet.Tokenlizer import Tokenlizer
 from DataSet.JTNN.MolTree import Vocab
 
-from enum import Enum, unique
+from enum import Enum
 class TokenEncoder(Enum):
     TE_Single = 0
     TE_Double = 1
     TE_Multiple = 2
-
-class EncoderType(Enum):
-    ET_Str      = 0
-    ET_Int      = 1
-    ET_OH       = 2
-    ET_Morgan   = 3    #len = 167
-    ET_MACCS    = 4
-    ET_Coulomb  = 5
-    ET_Hamiltonian = 6
-    ET_Graph    = 7
 
 class CTokens:
     def __init__(self, stdtokens, exter_tokens = None, is_pad = False, pad_symbol = ' ', startend = True, 
@@ -34,11 +21,11 @@ class CTokens:
 
         self.start_token = '<'
         self.end_token = '>'
-        self.pad_symbol = pad_symbol   #' '
+        self.pad_symbol = pad_symbol  
         self.pad_index = 0
         self.invalid_token = '&'
 
-        self.is_pad = is_pad    #is_pad
+        self.is_pad = is_pad   
         self.flip = flip
         self.startend = startend
         self.flag_tokens = [self.pad_symbol, self.start_token, self.end_token]
@@ -71,8 +58,6 @@ class CTokens:
         self.onehot_dict = {}
         self.char2int = {}
         self.int2char = {}
-        #self.char2int = dict((token, i) for i, token in enumerate(tokens)) 
-        #self.int2char = dict(( i, token) for i, token in enumerate(tokens))
         for i, symbol in enumerate(self.tokens):
             self.char2int[symbol] = i
             self.int2char[i] = symbol
@@ -124,84 +109,20 @@ class STDTokens:
     def Tokens(self):
         pass
 
-class STDTokens_Customed(STDTokens):
-    def __init__(self, tokens, *args, **kwargs):
-        self.tokens = tokens
-        maxlen = 1
-        for t in tokens:
-            if len(t) > maxlen:
-                maxlen = len(t)
-
-        if maxlen == 1:
-            self.token_encoder = TokenEncoder.TE_Single
-        elif maxlen == 2:
-            self.token_encoder = TokenEncoder.TE_Double
-        else:
-            self.token_encoder = TokenEncoder.TE_Multiple
-
-        return
-
-    def Encoder(self):
-        return self.token_encoder
-
-    def Tokens(self):
-        return self.tokens
-
-class  STDTokens_SMI_File(STDTokens):
-    def __init__(self, voc_file, add_std = False, *args, **kwargs):
-        std_tokens = [' ',  '<', '>', "[",  "]",
-                      "-", "=", "#", ":",    #Bonds
-                      "(", ")",              #Branches
-                      "%",
-                      ".",                   #Disconnected Structures
-                      '/','\\',              #Configuration Around Double Bonds
-                      '*',
-                      #'&',
-                      ]
-        if isinstance(voc_file, str):
-            tokens = [x.strip("\r\n ") for x in open(voc_file)]
-        elif isinstance(voc_file, (list, np.array, tuple)):
-            tokens = []
-            for f in voc_file:
-                tokens.extend([x.strip("\r\n ") for x in open(f)])
-
-        if add_std:
-            tokens = list(set(tokens).union(set(std_tokens)))           
-            tokens.sort()     
-
-        self.tokens = tokens
-
-        maxlen = 1
-        for t in tokens:
-            if len(t) > maxlen:
-                maxlen = len(t)
-
-        if maxlen == 1:
-            self.token_encoder = TokenEncoder.TE_Single
-        elif maxlen == 2:
-            self.token_encoder = TokenEncoder.TE_Double
-        else:
-            self.token_encoder = TokenEncoder.TE_Multiple
-
-        return
-
-
-    def Encoder(self):
-        return self.token_encoder
-
-
-    def Tokens(self):
-        return self.tokens
 
 class  STDTokens_Frag_File(STDTokens):
     def __init__(self, voc_file, add_std = False, *args, **kwargs):
         std_tokens = [' ']
-        if isinstance(voc_file, str):
+        if voc_file is None:
+            tokens = ['C']
+        elif isinstance(voc_file, str):
             tokens = [x.strip("\r\n ") for x in open(voc_file)]
         elif isinstance(voc_file, (list, np.array, tuple)):
             tokens = []
             for f in voc_file:
                 tokens.extend([x.strip("\r\n ") for x in open(f)])
+        else:
+             tokens = ['C']
 
         if add_std:
             tokens = list(set(tokens).union(set(std_tokens)))           
@@ -224,8 +145,6 @@ class  STDTokens_Frag_File(STDTokens):
             self.token_encoder = TokenEncoder.TE_Multiple
                  
         self.vocab = Vocab(self.tokens)
-
-        #self.token_encoder = TokenEncoder.TE_Multiple
 
         self.tokens_encode = dict((token, i) for i, token in enumerate(self.tokens))
         self.tokens_decode = dict((i, token) for i, token in enumerate(self.tokens))

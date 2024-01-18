@@ -1,52 +1,168 @@
+import numpy as np
 import pandas as pd
-
-from scipy.sparse.construct import random
 from tqdm import tqdm
 
 import random
-import networkx as nx
-
 import copy
+
+import networkx as nx
 
 import rdkit
 from rdkit import Chem
+from rdkit.Chem.EnumerateStereoisomers import EnumerateStereoisomers
 
 from DataSet.STDTokens import CTokens, STDTokens_Frag_File
-
 from DataSet.Graph.CNJTMol import CNJTMolTreeNode, CNJTMolTree
 from DataSet.Graph.CNJMolUtil import CNJMolUtil
-from DataSet.JTNN.MolTree import Vocab, MolTreeNode, MolTreeUtils
+from DataSet.JTNN.MolTree import MolTreeNode, MolTreeUtils
 from DataSet.JTNN.ChemUtils import ChemUtils
-
+from MolUtils.RDKUtils.Frag.RDKFragUtil import RDKFragUtil
+from MolUtils.RDKUtils.RDKAssembling import RDKAssembling
 from MolUtils.RDKUtils.Utils import RDKUtils
 
-class CNJMolAssembler:
-    def enum_assemble(node, neighbors, prev_nodes=[], prev_amap=[], alg = 'JTVAE'):
-        candidates = []
-        try:
-            if alg ==  'JTVAE':
-                candidates = ChemUtils.enum_assemble(node, neighbors, prev_nodes, prev_amap)
-            elif alg == 'Brics':
-                frags = [node.smiles]
-                frags_mol = [Chem.MolFromSmiles(node.smiles)]
-                for nb in neighbors:
-                    frags.append(nb.smiles)
-                    frags_mol.append(Chem.MolFromSmiles(nb.smiles))
-                    
-                new_mol = RDKBrics.build_mol(frags)
-                new_mol, _ = RDKAssembling.reconstruct_brics(frags_mol)
-                if new_mol is not None:
-                    smiles = Chem.MolToSmiles(new_mol)
-                    amap = [] #like [(2, 0, 0)]
-                    candidates.append((smiles, new_mol, amap))
 
+def CNJASM_HParam():
+    config = {
+        #alg               = 'CALG_TSSA', #JTVAE: without dummy atom
+        #alg               = 'CALG_TSDY', #with dummy atom, without dummy id
+        #alg               = 'CALG_TSID', #with dummy atom, with dummy id
+        #alg               = 'MM',        #candidates = node.smiles
+
+        #assemble_alg     = 'JTVAE_decode',   #JTVAE_decode: ChemUtils.decode_moltree
+        #assemble_alg      = 'leaf_first',     #leaf_first: build a candidadate tree
+        #assemble_alg     = 'group_first',     #group_first: randomly selece one candidate as target  
+                                                                
+        #always use candidate_tree to get candidate
+        #candidate_mode    = 'random_one',    #random_one: randomly selece one candidate as target 
+        #candidate_mode    = 'candidate_tree', #candidate_tree: build a candidadate tree
+                                                      
+        #final_select_alg  = 'random',      #random: randomly select on candidate as final output
+        #final_select_alg  = 'plogp',       #plogp: maximum penalized_logp
+        #final_select_alg  = 'candidates',  #return all from candidate_tree                                                              
+        #final_select_alg  = 'goal_valsartan_smarts',       #return a from GoalDirectedBenchmark which is defined in from External.Guacamol.guacamol.standard_benchmarks                                                              
+
+        #
+        #match_alg = 'match_dummy_idx',  #match with atom ids, only match one point
+        #match_alg = 'match_atomenv',   #math with atom env
+        #match_alg = 'match_all',       #without dummy id, match all possible dummy atoms
+                          
+        #replace_alg = 'join_sub',
+        #replace_alg = 'rdkit_replace', #more aandidates with Chirality
+
+        #------------
+        'alg'               : 'CALG_TSDY',  
+        'assemble_alg'      : 'leaf_first',
+        'candidate_mode'    : 'candidate_tree',
+        'final_select_alg'  : 'random',
+        
+        'match_alg'         : 'match_all',
+        'replace_alg'       : 'rdkit_replace',
+
+        #------------
+        #'cand_alg'          : 'atomenv',
+        'cand_alg'          : 'random',
+
+        'n_candidates'      : 25,  # candidates gets score than 99%
+
+        'use_stereo'        : False,
+        'pMean'             : None,
+
+    }
+    #dict => Namespace
+    #ns = argparse.Namespace(**config)
+    #Namespace => dict
+    #dic = vars(ns)
+    #return ns
+    return config
+
+
+class CNJMolAssembler:
+    def get_hparam(asm_alg = 'CALG_TSDY'):
+        #alg='Dummy',       'CALG_TSDY',
+        #alg='Dummy_AEID',  'CALG_TSID',
+        #alg='No_Dummy'     'CALG_TSSA'
+
+        hparam = CNJASM_HParam()
+        if asm_alg == 'CALG_TSDY': #'Dummy'
+            hparam['alg']               = 'CALG_TSDY'
+            hparam['assemble_alg']      = 'leaf_first'
+            hparam['candidate_mode']    = 'candidate_tree'
+            hparam['n_candidates']      = 3
+
+            hparam['final_select_alg']  = 'random'
+            #hparam['final_select_alg'] = 'goal_sitagliptin_replacement'
+        
+            hparam['match_alg']         = 'match_all'
+            hparam['replace_alg']       = 'join_sub'  
+            #hparam['replace_alg']       = 'rdkit_replace'  
+
+            hparam['cand_alg']          = 'random'
+            #hparam['cand_alg']         = 'goal_sitagliptin_replacement'   
+        elif asm_alg == 'CALG_TSID':  #'Dummy_AEID'
+            hparam['alg']               = 'CALG_TSID'
+            hparam['assemble_alg']      = 'leaf_first'
+            hparam['candidate_mode']    = 'candidate_tree'
+            hparam['final_select_alg']  = 'random'
+        
+            hparam['match_alg']         = 'match_dummy_idx'
+            hparam['replace_alg']       = 'join_sub'
+
+            #hparam['cand_alg']          = 'atomenv'
+            hparam['cand_alg']          = 'random'
+        else: #No_Dummy, CALG_TSSA
+            hparam['alg']               = 'CALD_TSSA'
+            hparam['assemble_alg']      = 'JTVAE_decode'
+            hparam['candidate_mode']    = 'random_one'
+            hparam['final_select_alg']  = 'random'        
+
+        return hparam
+
+    def enum_assemble(node, neighbors, prev_nodes=[], prev_amap=[], hparam = CNJASM_HParam()): 
+        candidates = []
+        candidates_sml = []
+        try:
+            if hparam['alg'] ==  'CALD_TSSA':
+                candidates = ChemUtils.enum_assemble(node, neighbors, prev_nodes, prev_amap)
+            elif hparam['alg'] == 'Brics':
+                raise Exception('Not Ready!')             
+            elif hparam['alg'] == 'CALG_TSDY' or hparam['alg'] == 'CALG_TSID':
+                frags = [node.smiles]
+                base_mol = Chem.MolFromSmiles(node.smiles)
+
+                for nb in neighbors:
+                    nb_cands = []
+                    if len(nb.candidates)==0:
+                        nb_cands = [nb.smiles]
+                    else:
+                        for cd in nb.candidates:
+                            nb_cands.append(cd[0])
+
+                    nb_cands = set(nb_cands)
+                    for ncd in nb_cands:
+                        nb_mol = Chem.MolFromSmiles(ncd)
+
+                        new_mol_cands, scores  = RDKAssembling.assemb_mols_dummy(base_mol, nb_mol,
+                                                                                 match_alg   = hparam['match_alg'],      
+                                                                                 replace_alg = hparam['replace_alg'],
+                                                                                 n_candidates = -1 #hparam['n_candidates']
+                                                                                 )                    
+                        for i, new_mol in enumerate(new_mol_cands):
+                            smiles = Chem.MolToSmiles(new_mol)
+                            if smiles not in candidates_sml:
+                                candidates_sml.append(smiles)
+                                amap = [] #like [(2, 0, 0)]
+                                candidates.append((smiles, new_mol, amap, scores[i]))
+                            #break
             elif alg =='MM':
-                candidates = node.smiles
+                candidates = [(node.smiles,Chem.MolToSmiles(node.smiles))]
+
         except Exception as e:
-            print('enum_assemble.Exception.node', node.smiles)
-            print('enum_assemble.Exception.neighbors', neighbors[0].smiles)
-            candidates = []
-            print(e.args)
+            print('[CNJMolAssembler.enum_assemble].Exception: ',e.args)
+            print('[CNJMolAssembler.enum_assemble].Exception.node', node.smiles)
+            print('[CNJMolAssembler.enum_assemble].Exception.neighbors', neighbors[0].smiles)
+            candidates = node.candidates
+         
+        #print('[out]:[CNJMolAssembler.enum_assemble:]', candidates)
 
         return candidates
 
@@ -62,18 +178,19 @@ class CNJMolAssembler:
         stack, trace = [], []
         stop = False
 
-        bfs_ex_nodeid, bfs_ex_vocids, bfs_ex_smiles, new_vocs = CNJTMolTree.get_bfs_ex(ctoken, bfs_binary_tree, extra_dummy= False)  #generate advanced bfs
+        bfs_ex_nodeid, bfs_ex_vocids, bfs_ex_smiles, new_vocs, bfs_ex_smarts = CNJTMolTree.get_bfs_ex(ctoken, bfs_binary_tree, extra_dummy= False)  
 
         bfsnode = bfs_binary_tree
         vocid = bfsnode.data['idx_voc']
         smile = bfsnode.data['smile']
-        wid = ctoken.STDTokens.vocab.get_index(smile)  #id are different, it should be updated
+        smarts = bfsnode.data['smarts']
+        wid = ctoken.STDTokens.vocab.get_index(smile)  
 
         root_wid = wid
-        root = MolTreeNode(smiles = smile, clique=[])
+        root = MolTreeNode(smiles = smile, clique=[], smarts = smarts)
         root.wid = root_wid
         root.idx = bfsnode.idx
-        stack.append((root, ctoken.STDTokens.vocab.get_slots(root.wid)))  # self.vocab.get_slots(720) = [('C', 0, 3), ('C', 0, 3)]      
+        stack.append((root, ctoken.STDTokens.vocab.get_slots(root.wid)))       
 
         bfs_queue = []
         bfs_queue.append(bfsnode)
@@ -84,17 +201,18 @@ class CNJMolAssembler:
         all_nodes = [root]
         parent_map = {}
         id_map = {}
-
         id_map[root.idx] = (root, MolTreeUtils.get_slots(root.smiles))  
 
         g.add_node(root.idx, 
                    nid = root.idx,  
                    smile = root.smiles,
-                   jtnode = root
+                   jtnode = root,
+                   smarts = root.smarts
                    )
         try:
             while len(bfs_queue) > 0 and not stop:
                 bds_node = bfs_queue.pop(0)
+
                 node_x, fa_slot = id_map[bds_node.idx]
 
                 node_left = bds_node.left
@@ -105,14 +223,13 @@ class CNJMolAssembler:
                     idx   = node_left.idx
                     vocid = node_left.data['idx_voc']
                     smile = node_left.data['smile']
-                    wid = ctoken.STDTokens.vocab.get_index(smile)  #id are different, it should be updated
+                    wid = ctoken.STDTokens.vocab.get_index(smile)  
 
                     slots = MolTreeUtils.get_slots(smile)
                     fa_slot = MolTreeUtils.get_slots(node_x.smiles)
-
+             
                     node_y = MolTreeNode(smile)
 
-                    #if ChemUtils.have_slots(fa_slot, slots) and ChemUtils.can_assemble(node_x, node_y):
                     next_wid = wid
                     next_slots = slots
 
@@ -134,8 +251,6 @@ class CNJMolAssembler:
                     g.nodes[idx]['jtnode'] = node_y 
 
                     bfs_queue.append(node_left)
-                    #else:
-                    #    print(f'Convert_to_JTMoltree:node_left[{idx}] could not be assembled!')
                 #----------------------------------------
                 if node_right is not None and not CNJMolUtil.is_dummy(node_right.data['smile']):                     
                     if node_x  in parent_map:
@@ -144,14 +259,13 @@ class CNJMolAssembler:
                     idx = node_right.idx
                     vocid = node_right.data['idx_voc']
                     smile = node_right.data['smile']
-                    wid = ctoken.STDTokens.vocab.get_index(smile)  #id are different, it should be updated
+                    wid = ctoken.STDTokens.vocab.get_index(smile)  
 
                     slots = MolTreeUtils.get_slots(smile)
                     fa_slot = MolTreeUtils.get_slots(node_x.smiles)
 
                     node_y = MolTreeNode(smile)
 
-                    #if ChemUtils.have_slots(fa_slot, slots) and ChemUtils.can_assemble(node_x, node_y):
                     next_wid = wid
                     next_slots = slots
 
@@ -159,7 +273,6 @@ class CNJMolAssembler:
                     node_y.idx = idx
                     node_y.neighbors.append(node_x)
                     node_x.neighbors.append(node_y)
-                    #node_y.clique.append[node_y]
 
                     all_nodes.append(node_y)
 
@@ -173,8 +286,6 @@ class CNJMolAssembler:
                     g.nodes[idx]['jtnode'] = node_y 
                
                     bfs_queue.append(node_right)
-                    #else:
-                    #    print(f'Convert_to_JTMoltree: node_right[{idx}] could not be assembled!')
 
         except Exception as e:
             print(e.args)
@@ -183,27 +294,21 @@ class CNJMolAssembler:
         #    GTools.show_network_g_cnjtmol(g)
         #-------------------
         n_nodes = len(g.nodes)
-        #moltree.nodes = [''] * n_nodes
         moltree.nodes = []
 
         for idkey in g.nodes:
             node = g.nodes[idkey]
-            #moltree.nodes[idkey] = node['jtnode']
             if CNJMolUtil.is_dummy(node['smile']):
                 continue
             else:
                 moltree.nodes.append(node['jtnode'])
 
-        #update nid to make it same as JTMolNode
-        #dummy nodes are removed, so update idx
         for i, node in enumerate(moltree.nodes):
             node.idx = i
             node.nid = node.idx + 1
             node.is_leaf = (len(node.neighbors) == 1)
             node.candidates = []
-            #node.candidates = [node.smiles]
 
-        ##
         dummy_nodes = []
         for node in moltree.nodes: 
             if CNJMolUtil.is_dummy(node.smiles):
@@ -221,9 +326,170 @@ class CNJMolAssembler:
 
         return root, all_nodes, g, moltree
 
+    def get_target_candidates(candidates, n_candidates, alg = 'random'):
+        if len(candidates) < n_candidates:
+            cands = candidates
+        else:
+            print(f'[len of candidates]:{len(candidates)}, select the first {n_candidates} as target')
+
+            cands = []
+            
+            if alg == 'atomenv':
+                cand = candidates[0]                 
+                if len(cand) < 4:
+                    alg = 'random'
+                else:      
+                    scores = []
+                    for cand in candidates:
+                        scores.append(cand[3])
+                    scores = sorted(scores)
+
+                    cands = sorted(candidates, reverse=True, key = lambda x: x[3])
+                    cands = cands[:n_candidates]
+            elif alg.startswith('goal_'):  #'goal_valsartan_smarts'
+                flag = True
+                gfun_name = alg[5:]
+
+                module_name = 'External.Guacamol.guacamol.standard_benchmarks'               
+
+                gfun = ModelUtils.str_to_class(module_name = module_name,  class_name = gfun_name)
+                if gfun is not None:
+                    gfun = gfun()
+
+                    sml_cands = []
+                    for cand in candidates:
+                        sml_cands.append(cand[0])
+
+                    scores =  gfun.objective.score_list(sml_cands)
+                    if sum(scores) > 0:
+                        p_list = []
+                        for i, cand in enumerate(candidates):
+                            candidates[i] = list(candidates[i])
+                            candidates[i][3] = scores[i]
+                    
+                        cands = sorted(candidates, reverse=True, key = lambda x: x[3])
+                        cands = cands[:n_candidates]
+                        flag = False
+
+                if flag:
+                    index = list(range(0, len(candidates) - 1))
+                    random.shuffle(index)
+
+                    i = 0;
+                    while i < n_candidates:
+                        cands.append(candidates[index[i]])
+                        i += 1           
+            else: # alg == 'random':
+                index = list(range(0, len(candidates) - 1))
+                random.shuffle(index)
+
+                i = 0;
+                while i < n_candidates:
+                    cands.append(candidates[index[i]])
+                    i += 1             
+
+        return cands
+
+    def assemble_JTMolTree_leaf_first(moltree,
+                                      uvisited,
+                                      hparam = CNJASM_HParam(),
+                                     ):
+        print_info  = False
+
+        n_nodes = len(uvisited)
+        node_leaf = []
+        dec_sml = 'CC'
+
+        for node in moltree.nodes:    
+            node.is_leaf = (len(node.neighbors) == 1)
+
+        while(sum(uvisited) > 1):   
+            node_leaf = []
+            for i, node in enumerate(moltree.nodes):
+                if node.is_leaf and uvisited[node.idx] == 1:
+                    node_leaf.insert(0,node)  
+        
+            for node in node_leaf:
+                neib = node.neighbors  #only one nei
+                neib_cand = []
+                if len(neib) > 0:
+                    gened = []
+
+                    candidates = []
+                    if hparam['candidate_mode'] == 'random_one':
+                        candidates = CNJMolAssembler.enum_assemble(node, neib, prev_nodes = [], prev_amap = [], alg = alg)
+                    else:  #candidate_tree
+                        if len(node.candidates) == 0:
+                            candidates = CNJMolAssembler.enum_assemble(node, neib, prev_nodes = [], prev_amap = [], hparam = hparam)
+                        else:
+                            can_smls = []
+                            for cand in node.candidates:  #
+                                node_copy = copy.deepcopy(node)
+                                node_copy.smiles = cand[0]
+
+                                if len(neib[0].candidates) == 0:
+                                    cands = CNJMolAssembler.enum_assemble(node_copy, neib, prev_nodes = [], prev_amap = [], hparam = hparam)
+                                    for cd in cands:
+                                        if cd[0] not in can_smls:
+                                            can_smls.append(cd[0])
+                                            candidates.append(cd)
+                                else:
+                                    old_candidates = neib[0].candidates
+
+                                    for i, bn_cand in enumerate(neib[0].candidates):
+                                        nb_copy = copy.deepcopy(neib[0])
+                                        nb_copy.smiles = bn_cand[0]
+
+                                        cands = CNJMolAssembler.enum_assemble(node_copy, [nb_copy], prev_nodes = [], prev_amap = [], hparam = hparam)
+                                        for cd in cands:
+                                            if cd[0] not in can_smls:
+                                                can_smls.append(cd[0])
+                                                candidates.append(cd)
+
+                                        if len(cands) > 0:
+                                            gened.append((bn_cand, cands))    
+
+                    n_candidates = hparam['n_candidates']  #25
+                    if len(candidates) > n_candidates:
+                        candidates = CNJMolAssembler.get_target_candidates(candidates, n_candidates, 
+                                                                            alg = hparam['cand_alg'] #'random','atomenv',
+                                                                            )   
+                    elif len(candidates) > 1 :
+                        candidates = sorted(candidates, reverse=True, key = lambda x: x[3])                   
+
+                    neib[0].candidates.extend(candidates)
+
+                    tgt_smls = RDKFragUtil.verify_candidates(neib[0].candidates)  
+                    neib[0].candidates = []
+                    for sml in tgt_smls:
+                        neib[0].candidates.append((sml, Chem.MolFromSmiles(sml)))        
+
+                    if len(neib[0].candidates) > 0:  #select one randomly as target
+                        idx = 0
+                        if hparam['candidate_mode'] == 'random_one':
+                            idx = random.randint(0,len(neib[0].candidates)-1)  #a <= n <= b
+
+                        neib[0].smiles = candidates[idx][0]
+                        neib[0].mol = candidates[idx][1]
+
+                    uvisited[node.idx] = 0
+                    neib[0].neighbors.remove(node)               
+                break 
+
+            for node in moltree.nodes:
+                node.is_leaf = (len(node.neighbors) == 1)
+
+        #end while
+
+        idx = uvisited.index(1)
+        final = moltree.nodes[idx] 
+
+        if len(final.candidates) == 0: 
+            final.candidates = [(final.smiles, Chem.MolFromSmiles(final.smiles))]
+
+        return final
+
     def can_be_assembled(node):
-        #node is a leaf
-        #node's neighbor's neighbors only include one neighor which degree is 2, all others' degree are 1  
         neighbors = node.neighbors[0]
 
         n_degree = 0
@@ -241,36 +507,35 @@ class CNJMolAssembler:
 
     def assemble_one_node(node, 
                           uvisited, 
-                          alg = 'JTVAE',
-                          candidate_mode = 'random_one',    #random_one: randomly selece one candidate as target 
-                                                                        #candidate_tree: build a candidadate tree
+                          hparam = CNJASM_HParam(),
                           ):
         try:
-            neibs = node.neighbors #more than one neighbours
+            neibs = node.neighbors
 
-            if candidate_mode == 'random_one':
-                candidates = CNJMolAssembler.enum_assemble(node, neibs, prev_nodes = [], prev_amap = [], alg = alg)
-            else:  #candidate_tree
-                #--------------------------------------------                        
+            if hparam['candidate_mode'] == 'random_one':
+                candidates = CNJMolAssembler.enum_assemble(node, neibs, prev_nodes = [], prev_amap = [], hparam = hparam)
+                if len(candidates) > hparam['n_candidates']:
+                    candidates = CNJMolAssembler.get_target_candidates(candidates, n_candidates = hparam['n_candidates'], 
+                                                                        alg = hparam['can_alg'] #'random','atomenv',
+                                                                        )  
+            else:  
                 if len(node.candidates) == 0:
-                    candidates = CNJMolAssembler.enum_assemble(node, neibs, prev_nodes = [], prev_amap = [], alg = alg)
+                    candidates = CNJMolAssembler.enum_assemble(node, neibs, prev_nodes = [], prev_amap = [], hparam = hparam)
                 else:
                     candidates = []
                     for cand_sml in node.candidates:  #
                         node_copy = copy.deepcopy(node)
                         node_copy.smiles = cand_sml
 
-                        cands = CNJMolAssembler.enum_assemble(node_copy, neibs, prev_nodes = [], prev_amap = [], alg = alg)
+                        cands = CNJMolAssembler.enum_assemble(node_copy, neibs, prev_nodes = [], prev_amap = [], hparam = hparam)
                         candidates.extend(cands)
-
-                        #--------------------------------------
 
             if len(candidates) == 0:
                 print('assemble_one_node:Candidates is None! Try agin')
                 try:
                     i = 1
                     while len(candidates) == 0 and i < len(neibs):
-                        candidates = CNJMolAssembler.enum_assemble(node, neibs[0 : -i], prev_nodes = [], prev_amap = [], alg = alg)
+                        candidates = CNJMolAssembler.enum_assemble(node, neibs[0 : -i], prev_nodes = [], prev_amap = [], hparam = hparam)
                         i = i + 1
 
                 except Exception as e:
@@ -295,7 +560,7 @@ class CNJMolAssembler:
                 uvisited[nb.idx] = 0
                 nb.neighbors.remove(node)
 
-            leave_nb = []  #should only one neighbor left
+            leave_nb = []  
             for nb in neibs:
                 if nb.degree() > 0:
                     leave_nb.append(nb)
@@ -304,24 +569,20 @@ class CNJMolAssembler:
                 raise ValueError('assemble_JTMolTree_degree_first get more node which input degree is more than one!')        
             else:
                 idx = -1
-                if len(candidates) > 0:  #select one randomly as target
+                if len(candidates) > 0:  
                     idx = random.randint(0,len(candidates)-1)  #a <= n <= b
 
                 if idx >=0:
                     if len(leave_nb) == 0:
-                        #the last one
                         node.smiles = candidates[idx][0]
                         node.mol = candidates[idx][1]        
                         node.candidates.extend(candidates)
                     else:
-                        #idx = len(candidates) - 1
-                        #idx = 0
                         leave_nb[0].smiles = candidates[idx][0]
                         leave_nb[0].mol = candidates[idx][1]       
                         leave_nb[0].candidates.extend(candidates)
                         uvisited[leave_nb[0].idx] = 1
                 
-                        #update node
                         uvisited[node.idx] = 0
                         node.neighbors.clear()     
                 else:
@@ -340,11 +601,8 @@ class CNJMolAssembler:
 
     def assemble_JTMolTree_degree_first(moltree,
                                       uvisited, 
-                                      alg = 'JTVAE', 
-                                      candidate_mode = 'random_one',    #random_one: randomly selece one candidate as target 
-                                                                        #candidate_tree: build a candidadate tree
-
-                                     ):
+                                      hparam = CNJASM_HParam()
+                                      ):
         n_nodes = len(uvisited)
         node_leaf = []
         dec_sml = 'CC'
@@ -355,7 +613,7 @@ class CNJMolAssembler:
             node.is_leaf = (len(node.neighbors) == 1)
 
         try:
-            while(sum(uvisited) > 1):   #leave one node as final
+            while(sum(uvisited) > 1):   
                 node_leaf = []
                 for i, node in enumerate(moltree.nodes):
                     if node.degree() == 1 and uvisited[node.idx] == 1:
@@ -365,15 +623,14 @@ class CNJMolAssembler:
 
                 for node in node_leaf:
                     if CNJMolAssembler.can_be_assembled(node):
-                        CNJMolAssembler.assemble_one_node(node.neighbors[0], uvisited , alg, candidate_mode)
+                        CNJMolAssembler.assemble_one_node(node.neighbors[0], uvisited , hparam)
 
                         no_assemble = False
                         break
 
                 if no_assemble:
-                    #print('No valid node which can be assembled, using leaf-first algorithm!')
                     node  = node_leaf[0]
-                    CNJMolAssembler.assemble_one_node(node, uvisited , alg, candidate_mode)
+                    CNJMolAssembler.assemble_one_node(node, uvisited, hparam)
             
                 for node in moltree.nodes:
                     node.is_leaf = (len(node.neighbors) == 1)
@@ -387,25 +644,23 @@ class CNJMolAssembler:
         return final
 
     def assemble_order(moltree, use_stereo = False):
-        #ref ExternalGraph\JTVAE\JTNN\JTNNVAE.py
-        #decode(self, tree_vec, mol_vec, prob_decode)
         pred_root = moltree.nodes[0]
         pred_nodes = moltree.nodes
 
         for i, node in enumerate(pred_nodes):
-            node.nid = i + 1  # ???why i+1?
+            node.nid = i + 1  
             node.is_leaf = (len(node.neighbors) == 1)
             if len(node.neighbors) > 1:
                 ChemUtils.set_atommap(node.mol, node.nid)
 
-        tree_mess = None  # JTNNEncoder
+        tree_mess = None  
         mol_vec = None
 
         cur_mol = ChemUtils.copy_edit_mol(pred_root.mol)
 
-        global_amap = [{}] + [{} for node in pred_nodes]  # [{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}]
+        global_amap = [{}] + [{} for node in pred_nodes]  
         global_amap[1] = {atom.GetIdx(): atom.GetIdx() for atom in
-                          cur_mol.GetAtoms()}  # [{}, {0: 0, 1: 1}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}]	list
+                          cur_mol.GetAtoms()} 
 
         cur_mol = CNJMolAssembler.dfs_assemble_without_score(tree_mess      = tree_mess, 
                                                              mol_vec        = mol_vec, 
@@ -428,15 +683,15 @@ class CNJMolAssembler:
     def dfs_assemble_without_score(tree_mess, mol_vec, all_nodes, cur_mol,
                                    global_amap, fa_amap, 
                                    cur_node, 
-                                   fa_node  #previous node, it mean which is father
+                                   fa_node 
                                    ):
         fa_nid = fa_node.nid if fa_node is not None else -1  # -1
         prev_nodes = [fa_node] if fa_node is not None else []  # []
 
-        children = [nei for nei in cur_node.neighbors if  nei.nid != fa_nid]  # [0]:<ExternalGraph.JTVAE.JTNN.MolTree.MolTreeNode object at 0x0000023DA74AE048>
-        neighbors = [nei for nei in children if nei.mol.GetNumAtoms() > 1]  # []
+        children = [nei for nei in cur_node.neighbors if  nei.nid != fa_nid]  
+        neighbors = [nei for nei in children if nei.mol.GetNumAtoms() > 1]  
         neighbors = sorted(neighbors, key=lambda x: x.mol.GetNumAtoms(), reverse=True)
-        singletons = [nei for nei in children if nei.mol.GetNumAtoms() == 1]  # [0]:<ExternalGraph.JTVAE.JTNN.MolTree.MolTreeNode object at 0x0000023DA74AE048>
+        singletons = [nei for nei in children if nei.mol.GetNumAtoms() == 1]  
         neighbors = singletons + neighbors
 
         cur_amap = [(fa_nid, a2, a1) for nid, a1, a2 in fa_amap if nid == cur_node.nid]  # []
@@ -457,32 +712,23 @@ class CNJMolAssembler:
             cands = candidates
 
         if len(cands) == 0:
-            #print('-------------------dfs_assemble return None------------------------')
             return None
 
         cand_smiles, cand_mols, cand_amap = zip(*cands)
-        #print('dfs_assemble:cand_smiles', cand_smiles)
 
         cands = [(candmol, all_nodes, cur_node) for candmol in cand_mols]
 
-        # -----------------------------------------------------------------------------
 
         if len(cands) == 1:
             cand_idx = [0]
         else:
             cand_idx = [*range(len(cands) - 1, 0, -1)]
 
-        # -----------------------------------------------------------------------------------
-
-        #RDKUtils.show_mol_with_atommap(cur_mol, atommap = False)
-
         backup_mol = Chem.RWMol(cur_mol)
-        #for i in range(cand_idx.numel()):
         for i in range(len(cand_idx)):
             cur_mol = Chem.RWMol(backup_mol)
-            #pred_amap = cand_amap[int(cand_idx[i].item())]  # [(2, 0, 0)]
-            pred_amap = cand_amap[int(cand_idx[i])]  # [(2, 0, 0)]
-            new_global_amap = copy.deepcopy(global_amap)  # [{}, {0: 0, 1: 1}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}]
+            pred_amap = cand_amap[int(cand_idx[i])]  
+            new_global_amap = copy.deepcopy(global_amap)  
 
             for nei_id, ctr_atom, nei_atom in pred_amap:
                 if nei_id == fa_nid:
@@ -493,10 +739,6 @@ class CNJMolAssembler:
             new_mol = cur_mol.GetMol()
             new_mol = Chem.MolFromSmiles(Chem.MolToSmiles(new_mol))
 
-            #RDKUtils.show_mol_with_atommap(new_mol, atommap = False)
-
-            # print('dfs_assemble:new_mol',Chem.MolToSmiles(new_mol)) #jw  #'C=O'
-            # Draw.MolsToGridImage([new_mol],    subImgSize=(600,600),).show()
 
             if new_mol is None:
                 continue
@@ -523,37 +765,15 @@ class CNJMolAssembler:
             if result:
                 return cur_mol
 
-        #print('-------------------end of dfs_assemble------------------------')
-        #return None
         return cur_mol
 
-    def assemble_jtvae_decode(moltree):
-        dec_smiles = ChemUtils.decode_moltree(moltree)
-        return dec_smiles
 
-    def assemble_JTMolTree(moltree,
-                           alg = 'JTVAE', 
-                           assemble_alg = 'JTVAE_decode',   #ChemUtils.decode_moltree
-                                                            #group_first: randomly selece one candidate as target 
-                                                            #leaf_first: build a candidadate tree
-                           candidate_mode = 'random_one',   #random_one: randomly selece one candidate as target 
-                                                            #candidate_tree: build a candidadate tree
-                           final_select_alg = 'random',     #random: randomly select on candidate as final output
-                                                            #plogp: maximum penalized_logp
-                           use_stereo = True,               #wether enumerate  stereo  as part of final output candidate
+    def assemble_JTMolTree(moltree: CNJTMolTree, 
                            ctoken = None,
-                           p_mean = None,
+                           hparam = CNJASM_HParam(),
                            ):
-        #----------------------------------------------------------------
-        #this method select node order by how many neighbors 
-        #node with one neighbor is the first round, then remove this node from it's neighbor's  neighbor,
-        #it means, it's neighbor remove one neighbor, then continue
-        #so, the order of visited node is only base on how many neighbors, not the order of tree
-        #different order generate different mols
-        #so another method should be developed to assemble tree based on tree order
-        #----------------------------------------------------------------
         n_nodes = len(moltree.nodes)
-        uvisited = [1] * n_nodes #(range(0,n_nodes))
+        uvisited = [1] * n_nodes 
         node_leaf = []
         dec_sml = 'CC'
 
@@ -568,227 +788,514 @@ class CNJMolAssembler:
             for node in moltree.nodes:
                 node.is_leaf = (len(node.neighbors) == 1)
 
-            if alg == 'JTVAE':
-                for node in moltree.nodes:   #this could not used in BRICS, because if atommap is added then GetImplicitValence() get wrong value
+            if hparam['alg'] == 'CALD_TSSA':
+                for node in moltree.nodes:  
                     if len(node.neighbors) > 1:
                         ChemUtils.set_atommap(node.mol, node.nid)
 
-                if assemble_alg == 'JTVAE_decode':
+                if hparam['assemble_alg'] == 'JTVAE_decode':
                     final = CNJMolAssembler.assemble_order(moltree)
                     if final is None:
-                        final = CNJMolAssembler.assemble_JTMolTree_degree_first(moltree, uvisited = uvisited,  alg = alg, candidate_mode = candidate_mode)   
-                else:
-                    raise 'Error!'
-                #-------
-                cur_mol =  CNJMolAssembler.get_final_mol(final, final_select_alg = final_select_alg,
-                                                         use_stereo = use_stereo,
-                                                         p_mean = p_mean,
-                                                         )   
-            
-            else: #alg == 'BRICS':
-                raise 'Error!'
+                        final = CNJMolAssembler.assemble_JTMolTree_degree_first(moltree, uvisited = uvisited, hparam = CNJMolAssembler.get_hparam(asm_alg = 'CALG_TSDY'))   
 
-            cur_mol = RDKUtils.remove_atommap_info_mol(cur_mol)
-            dec_sml = Chem.MolToSmiles(cur_mol)
+                cur_mol =  CNJMolAssembler.get_final_mol(final, 
+                                                         final_select_alg   = hparam['final_select_alg'], 
+                                                         use_stereo         = hparam['use_stereo'],
+                                                         p_mean             = hparam['pMean'],
+                                                         )  
+
+            elif hparam['alg'] == 'CALG_TSDY' or hparam['alg'] == 'CALG_TSID':
+                final = CNJMolAssembler.assemble_JTMolTree_leaf_first(moltree, uvisited = uvisited, hparam = hparam)
+
+                cur_mol =  CNJMolAssembler.get_final_mol(final, 
+                                                         final_select_alg   = hparam['final_select_alg'], 
+                                                         use_stereo         = hparam['use_stereo'],
+                                                         p_mean             = hparam['pMean'],
+                                                         longest_mol        = True,
+                                                         )   
+            else: #alg == 'BRICS':
+                cur_mol = CNJMolAssembler.assemble_Brics_bfs(moltree, uvisited = uvisited,)
+                cur_mol = Chem.MolFromSmiles(Chem.MolToSmiles(cur_mol))              
+
+            try:
+                if isinstance(cur_mol, rdkit.Chem.rdchem.Mol):
+                    s_mol = RDKUtils.remove_dummy_atom(cur_mol)
+                    #Chem.SanitizeMol(s_mol)  #added at 2023.09.04
+
+                    dec_sml = Chem.MolToSmiles(s_mol)
+                    dec_sml = RDKUtils.remove_atommap_info(dec_sml)
+
+                    #new_mol = RDKUtils.remove_atom(Chem.MolFromSmiles(dec_sml), atomic_num = 0)
+                    #Chem.Kekulize(Chem.MolToSmiles(dec_sml))
+                    #dec_sml = Chem.MolToSmiles(new_mol, kekuleSmiles=True)
+                    #dec_sml = Chem.MolToSmiles(new_mol)
+                else:
+                    dec_sml_list = []
+                    for s_mol in cur_mol:
+                        s_mol = RDKUtils.remove_dummy_atom(s_mol)
+                        #Chem.SanitizeMol(s_mol)  #added at 2023.09.04
+
+                        dec_sml = Chem.MolToSmiles(s_mol)
+                        dec_sml = RDKUtils.remove_atommap_info(dec_sml)
+
+                        #new_mol = RDKUtils.remove_atom(Chem.MolFromSmiles(dec_sml), atomic_num = 0)
+                        #Chem.Kekulize(Chem.MolToSmiles(dec_sml))
+                        #dec_sml = Chem.MolToSmiles(new_mol, kekuleSmiles=True)
+                        #dec_sml = Chem.MolToSmiles(new_mol)
+
+                        dec_sml_list.append(dec_sml)
+
+                    dec_sml_list.sort()
+                    dec_sml = dec_sml_list
+
+            except Exception as e:
+                print('[[CNJMolAssembler.assemble_JTMolTree.select final].Exception',e.args)
+                if isinstance(cur_mol, rdkit.Chem.rdchem.Mol):
+                    dec_sml = Chem.MolToSmiles(cur_mol)
+                else:
+                    dec_sml = Chem.MolToSmiles(cur_mol[0])
+
         except Exception as e:
-            print(e.args)
+            print('[CNJMolAssembler.assemble_JTMolTree]:', e.args)
 
         return dec_sml
 
 
-    def get_final_mol(final_node, final_select_alg = 'random', use_stereo = True, p_mean = None):
+    def get_final_mol(final_node, final_select_alg = 'random', use_stereo = True, p_mean = None, longest_mol = False):
         if isinstance(final_node, rdkit.Chem.rdchem.Mol):
+            #Chem.SanitizeMol(final_mol)  #???
             return final_node
 
-        sml_cand = list(set([cand[0] for cand in final_node.candidates]))
+        sml_cands = list(set([cand[0] for cand in final_node.candidates]))
         final_mol = None        
+        
+        try:
+            id_cands = []
+            #for cand in sml_cands:
+            #    if cand.find('*') != -1:
+            #        id_cands.append(cand)
+            #if len(id_cands) < len(sml_cands):
+            #    sml_cands = list(set(sml_cands) - set(id_cands))
 
-        if final_node.candidates == [] or final_select_alg == 'random':
-            sml = final_node.smiles
-            final_mol = Chem.MolFromSmiles(sml)
+            if final_select_alg == 'random':
+                sml = random.choice(sml_cands)
+                final_mol = Chem.MolFromSmiles(sml)
+
+            elif final_select_alg == 'candidates':
+                mol_list = []
+                for i, sml in enumerate(sml_cands):
+                    mol = Chem.MolFromSmiles(sml)
+                    if mol is None:
+                        continue
+                    mol_list.append(mol)
+
+                    if use_stereo:
+                        isomers = list(EnumerateStereoisomers(mol))
+                        mol_list.extend(isomers)
+
+                mol_list = list(set(mol_list))
+                #Draw.MolsToGridImage(mol_list, molsPerRow=3, subImgSize=(500, 500),  legends=[Chem.MolToSmiles(m) for m in mol_list]).show()
+
+                #random.shuffle(mol_list)
+                #final_mol = mol_list[0]
+
+                final_mol = mol_list
+               
+                if longest_mol:
+                    cands_smls, final_mol =  RDKFragUtil.get_longest_mols(final_mol)
+            elif final_select_alg.startswith('goal_'):  #'goal_valsartan_smarts'
+                flag = True
+                gfun_name = final_select_alg[5:]
+
+                #External.Guacamol.guacamol.goal_directed_benchmark.GoalDirectedBenchmark
+                module_name = 'External.Guacamol.guacamol.standard_benchmarks'               
+
+                gfun = ModelUtils.str_to_class(module_name = module_name,  class_name = gfun_name)
+                if gfun is not None:
+                    gfun = gfun()
+                    scores =  gfun.objective.score_list(sml_cands)
+
+                    if sum(scores) > 0:
+                        p_list = []
+                        for i, item in enumerate(sml_cands):
+                            p_list.append((scores[i], sml_cands[i]))
+                    
+                        p_list.sort(key=lambda u:(-u[0]))
+                        final_mol = Chem.MolFromSmiles(p_list[0][1])   
+                        flag = False
+
+                if flag:                   
+                    sml = random.choice(sml_cands)
+                    final_mol = Chem.MolFromSmiles(sml)
+            else:
+                p_list = []
+                mol_list = []
+                for i, sml in enumerate(sml_cands):
+                    mol = Chem.MolFromSmiles(sml)
+                    if mol is None:
+                        continue
+                    mol_list.append(mol)
+
+                    if use_stereo:
+                        isomers = list(EnumerateStereoisomers(mol))
+                        mol_list.extend(isomers)
+                #end for
+
+                for mol in mol_list:
+                    p = CNJMolAssembler.get_mol_properties(mol)
+                    p_list.append([p, mol])
+
+                if p_mean is not None:
+                    for i in range(len(p_list)):
+                        p_list[i] = np.abs(p_list[i][0] - p_mean)
+
+                #p_list.sort(key=lambda u:(u[0], -u[1]))
+                p_list.sort(key=lambda u:(-u[0]))
+
+                final_mol = p_list[0][1]
+        except Exception as e:
+            print('[CNJMolAssembler.get_final_mol].Exception', e.args)
+            final_mol = Chem.MolFromSmiles('CC')
+ 
+        if final_mol is None:
+            final_mol = [Chem.MolFromSmiles('CC')]
+        elif isinstance(final_mol, rdkit.Chem.rdchem.Mol):
+            #final_mol = RDKUtils.remove_dummy_atom(final_mol)
+            dec_sml =  Chem.MolToSmiles(final_mol)
+            #dec_sml = RDKUtils.remove_atommap_info(dec_sml)
+
+            fix_smls = RDKFragUtil.fix_mol(dec_sml)
+            if fix_smls is not None:
+                final_mol = Chem.MolFromSmiles(fix_smls)
+            else:
+                final_mol = [Chem.MolFromSmiles('CC')]
+            final_mol = [final_mol]
         else:
-            raise 'Error!'
+            for i, join_mol in enumerate(final_mol):
+                joined_sml =  Chem.MolToSmiles(join_mol)
+                fix_smls = RDKFragUtil.fix_mol(joined_sml)
+                if fix_smls is not None:
+                    final_mol[i] = Chem.MolFromSmiles(fix_smls)        
 
-        return final_mol
+        return final_mol  #return mol or [mol]
 
-    def Accemble_JTVAEMol(vocab,
-                          ctoken,
-                          bfs_binary_tree:CNJTMolTreeNode,
-                          bfs_node_map,
-                          show = True,
-                          assemble_alg = 'JTVAE_decode',    #ChemUtils.decode_moltree
-                                                            #group_first: randomly selece one candidate as target 
-                                                            #leaf_first: build a candidadate tree
-                          alg = 'JTVAE',
-                          candidate_mode = 'random_one',    #random_one: randomly selece one candidate as target 
-                                                            #candidate_tree: build a candidadate tree
-                          final_select_alg = 'random',      #random: randomly select on candidate as final output
-                                                            #plogp: maximum penalized_logp
-                          use_stereo = True,                #wether enumerate  stereo  as part of final output candidate
-                          p_mean = None
-                          ):
+
+    def dfs_assemble(all_nodes, cur_mol, global_amap, fa_amap, cur_node, fa_node, prob_decode):
+        #D:\ProjectTF\BioChemoTCH\ExternalGraph\JTVAE\JTNN\JTNNVAE.py
+        #modified             
+        #print('-------------------dfs_assemble------------------------')             
+        #print('dfs_assemble:cur_mol', Chem.MolToSmiles(cur_mol)) #jw  #round3: C[C:2](=O)[OH:3]
+        ## Draw.MolsToGridImage([cur_mol],    subImgSize=(600,600),).show()
+        ##print('dfs_assemble:mol_vec', mol_vec) 
+        #print('dfs_assemble:all_nodes.len()', len(all_nodes))   #round3: 13
+        #print('dfs_assemble:global_amap', global_amap)          #round3: [{}, {0: 0, 1: 1}, {0: 0}, {0: 0, 1: 2}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {0: 0, 1: 3}]
+        #print('dfs_assemble:fa_amap', fa_amap)                  #round3: [(1, 0, 0), (3, 0, 0), (13, 0, 0)]
+        #print('dfs_assemble:cur_node', cur_node.smiles)         #round3: CO
+        #print('dfs_assemble:fa_node', fa_node.smiles if fa_node is not None else None)  #round3: C
+        #print('dfs_assemble:prob_decode', prob_decode)          #round3: False
+        ##Draw.MolsToGridImage([cur_mol],    subImgSize=(600,600),).show()
+        #print('-------------------end of dfs_assemble.input------------------------')             
+
+
+        fa_nid = fa_node.nid if fa_node is not None else -1  # -1
+        prev_nodes = [fa_node] if fa_node is not None else []  # []
+
+        children = [nei for nei in cur_node.neighbors if nei.nid != fa_nid]     # [0]:<ExternalGraph.JTVAE.JTNN.MolTree.MolTreeNode object at 0x0000023DA74AE048>
+        neighbors = [nei for nei in children if nei.mol.GetNumAtoms() > 1]      # []
+        neighbors = sorted(neighbors, key=lambda x: x.mol.GetNumAtoms(), reverse=True)
+        singletons = [nei for nei in children if nei.mol.GetNumAtoms() == 1]    # [0]:<ExternalGraph.JTVAE.JTNN.MolTree.MolTreeNode object at 0x0000023DA74AE048>
+
+        neighbors = singletons + neighbors
+
+        cur_amap = [(fa_nid, a2, a1) for nid, a1, a2 in fa_amap if nid == cur_node.nid]  # []
+
+        cands = CNJMolAssembler.enum_assemble(cur_node, neighbors, prev_nodes, cur_amap)  # 'C=O' + 'C' = 'O=[CH2:2]',
+        if len(cands) == 0:
+            #print('-------------------dfs_assemble return None------------------------')
+            return None
+
+        cand_smiles, cand_mols, cand_amap = zip(*cands)
+        #print('dfs_assemble:cand_smiles', cand_smiles)
+
+        cands = [(candmol, all_nodes, cur_node) for candmol in cand_mols]
+
+        # -----------------------------------------------------------------------------
+        # cand_vecs = self.jtmpn(cands, tree_mess)
+        # cand_vecs = self.G_mean(cand_vecs)
+        # mol_vec = mol_vec.squeeze()
+        # scores = torch.mv(cand_vecs, mol_vec) * 20
+        #
+        # if prob_decode:
+        #     probs = nn.Softmax()(scores.view(1,-1)).squeeze() + 1e-5 #prevent prob = 0
+        #     cand_idx = torch.multinomial(probs, probs.numel())
+        # else:
+        #     _,cand_idx = torch.sort(scores, descending=True)
+        cand_idx = [0]
+        # -----------------------------------------------------------------------------------
+
+        backup_mol = Chem.RWMol(cur_mol)
+        for i in range(len(cand_idx)):
+            cur_mol = Chem.RWMol(backup_mol)
+            pred_amap = cand_amap[cand_idx[i]]  # [(2, 0, 0)]
+            new_global_amap = copy.deepcopy(global_amap)  # [{}, {0: 0, 1: 1}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}]
+
+            for nei_id, ctr_atom, nei_atom in pred_amap:
+                if nei_id == fa_nid:
+                    continue
+                new_global_amap[nei_id][nei_atom] = new_global_amap[cur_node.nid][ctr_atom]  # [{}, {0: 0, 1: 1}, {0: 0}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}]
+
+            cur_mol = ChemUtils.attach_mols(cur_mol, children, [], new_global_amap)  # father is already attached
+            new_mol = cur_mol.GetMol()
+            new_mol = Chem.MolFromSmiles(Chem.MolToSmiles(new_mol))
+
+            #print('dfs_assemble:new_mol', Chem.MolToSmiles(new_mol))  # jw  #'C=O'
+            # Draw.MolsToGridImage([new_mol],    subImgSize=(600,600),).show()
+
+            if new_mol is None: continue
+
+            result = True
+            for nei_node in children:
+                if nei_node.is_leaf: continue
+                cur_mol = CNJMolAssembler.dfs_assemble(all_nodes, 
+                                                       cur_mol, 
+                                                       new_global_amap,
+                                                       pred_amap,
+                                                       nei_node, 
+                                                       cur_node, 
+                                                       prob_decode
+                                                       )
+                if cur_mol is None:
+                    result = False
+                    break
+
+            if result:
+                #print('-------------------dfs_assemble return cur_mol------------------------')
+                return cur_mol
+
+        #print('-------------------end of dfs_assemble------------------------')
+        return None
+
+    def Assemble_Mol(vocab,
+                    ctoken,
+                    bfs_binary_tree:CNJTMolTreeNode,
+                    bfs_node_map,
+                    hparam = CNJASM_HParam(),
+                    show = True,
+                    #assemble_alg = 'JTVAE_decode',    #ChemUtils.decode_moltree
+                    #                                  #group_first: randomly selece one candidate as target
+                    #                                  #leaf_first: build a candidadate tree
+                    #alg = 'CALG_TSSA',                #'JTVAE':'CALG_TSSA',  without dummy atom, use similar logic with JTVAE, with out dummy atom
+                    #                                  #'BRICS': this should not be used now as linking to parts may wrong, without dummy atom
+                    #                                  #'Dummy', 'CALG_TSDY' or 'CALG_TSID' #with dummy atom, with dummy id
+                    #candidate_mode = 'random_one',    #random_one: randomly selece one candidate as target
+                    #                                  #candidate_tree: build a candidadate tree
+                    #final_select_alg = 'random',      #random: randomly select on candidate as final output
+                    #                                  #plogp: maximum penalized_logp
+                    #use_stereo = True,                #wether enumerate  stereo  as part of final output candidate
+                    #p_mean = None
+                    ):
         dec_smile = ''
         try:
-            pred_root, pred_nodes, g, moltree = CNJMolAssembler.Convert_to_JTMoltree(vocab, ctoken,bfs_binary_tree, bfs_node_map, show)
+            pred_root, pred_nodes, g, moltree = CNJMolAssembler.Convert_to_JTMoltree(vocab, ctoken, bfs_binary_tree, bfs_node_map, show)
+
 
             dec_smile = CNJMolAssembler.assemble_JTMolTree(moltree, 
-                                                           alg = alg,
-                                                           assemble_alg = assemble_alg,
-                                                           candidate_mode   = candidate_mode,
-                                                           final_select_alg = final_select_alg,
-                                                           use_stereo       = use_stereo,
-                                                           ctoken  = ctoken,
-                                                           p_mean = p_mean,
+                                                           ctoken           = ctoken,
+                                                           hparam           = hparam,
+                                                           #alg              = alg,
+                                                           #assemble_alg     = assemble_alg,
+                                                           #candidate_mode   = candidate_mode,
+                                                           #final_select_alg = final_select_alg,
+                                                           #use_stereo       = use_stereo,
+                                                           #p_mean           = p_mean,
                                                            )
         except Exception as e:
             print(e.args)
             
+        if dec_smile is not None:
+            if isinstance(dec_smile, str):
+                if len(dec_smile) == 0:
+                    dec_smile = 'CC'
+            else:
+                for i, sml in enumerate(dec_smile):
+                    if len(sml) == 0:
+                        dec_smile[i] = 'CC'         
+                if len(dec_smile) == 1:
+                    dec_smile  = dec_smile[0]         
+        else:
+            dec_smile = 'CC' 
+
         return dec_smile
 
 
+    def decode_single(bfs_ex_smiles, ctoken, asm_alg = 'CALG_TSDY', n_samples = 1, p_mean = None):
+        try:
+            #print(f'{threading.current_thread().name}----[decode_single]:{bfs_ex_smiles}')
+                                                        
+            hparam = CNJMolAssembler.get_hparam(asm_alg)
+ 
+            sub_smils = bfs_ex_smiles.strip().split('.')  #to seperate molecules for reaction
+            re_smils = ''
+            errors = []
+            re_ex_smils = []
+            new_vocs = []
+
+            for i, sub_s in enumerate(sub_smils):
+                if not isinstance(sub_s, (str)):
+                    print(f'[test_rebuild_file is not a string-{i}:-{bfs_ex_smiles}]')
+                    continue
+                else:
+                    bfs_ex_smiles = CNJMolUtil.split_ex_smiles(sub_s, delimiter='^')
+
+                if i > 0:
+                    re_smils += '.'
+                    re_ex_smils+= '.'
+
+                if bfs_ex_smiles is None or len(bfs_ex_smiles) < 1:
+                    print(f'[test_rebuild_file is null or empty-{i}:-{bfs_ex_smiles}]')
+                    continue
+
+                if len(bfs_ex_smiles) > ctoken.max_length:
+                    bfs_ex_smiles = bfs_ex_smiles[0:ctoken.max_length]
+
+                bfs_tree, g, bfs_node_map =  CNJTMolTree.bfs_ex_reconstruct(ctoken = ctoken, bfs_ex_smiles = bfs_ex_smiles, show = True)
+
+                if bfs_tree is not None:                      
+                    bfs_ex_nodeid, bfs_ex_vocids, bfs_ex_smiles, new_voc, bfs_ex_smarts= CNJTMolTree.get_bfs_ex(ctoken, bfs_tree)  #generate advanced bfs 
+                    if len(bfs_ex_smiles) % 2 == 1:
+                        bfs_ex_smiles.append['&']
+
+                    if bfs_ex_smiles is not None:
+                        re_ex_smils += bfs_ex_smiles
+
+                    if len(new_voc)> 0:
+                        new_vocs.append(new_voc)
+
+                    for k in range(n_samples):
+                        #Dummy: alg = 'CALG_TSDY',  assemble_alg = 'leaf_first'
+                        #other: alg = 'CALG_TSSA'   assemble_alg = 'JTVAE_decode'
+
+                        dec_smile =  CNJMolAssembler.Assemble_Mol(vocab            = None,    #vocab,
+                                                                ctoken          = ctoken,
+                                                                bfs_binary_tree = bfs_tree,
+                                                                bfs_node_map    = bfs_node_map,
+                                                                show            = False,
+                                                                hparam          = hparam,
+                                                                )
 
 
-def test_reconstruct():
-    print('-------------test_reconstruct-----------------')
+                        if not isinstance(dec_smile, str):
+                            dec_smile = '|!|'.join(s for s in dec_smile)
 
-    maxlen = 256
-    vocab_file = r'H:\GitHub\t-SMILES\RawData\AID1706\active\Scaffold\active_smiles.smi.[Scaffold][24]_token.voc.smi'
+                        if dec_smile is not None and len(dec_smile)>0:
+                            re_smils += dec_smile
+                        else:
+                            errors.append(bfs_ex_smiles)    
 
-    ctoken = CTokens(STDTokens_Frag_File(vocab_file), is_pad = True, pad_symbol = ' ', startend = True,
-                     max_length = maxlen,  flip = False, invalid = True, onehot = False)    
-    
-    #-----------------------------------------------------------------------------------
-    #sml = 'CC1=C(C=C(C=C1)OCC(=O)NC2=C(C=C(C=C2)C(=O)O)NC(=O)COC3=CC(=C(C=C3)C)C)C'
+        except Exception as e:
+            print('[CNJMolAssembler.decode_single].Exception:', e.args)
+            print('[CNJMolAssembler.decode_single].Exception:', bfs_ex_smiles)
+            re_smils = 'CC'
+            bfs_ex_smiles = ['CC', '&', '&', '&']
+            new_vocs = [['CC']]
 
-    bfs_ex = 'CC&O=C(COC1=CC=CC=C1)NC1=CC=CC=C1NC(=O)COC1=CC=CC=C1&CC&O=CO^CC&&&CC&CC&&'
+        return re_smils, bfs_ex_smiles, new_vocs
 
-    #----------------------------------------------------------------------------
 
-    bfs_ex_smiles = CNJMolUtil.split_ex_smiles(bfs_ex, delimiter='^')
-    print('bfs_ex_smiles', bfs_ex_smiles)
-    
-    bfs_tree, g, bfs_node_map =  CNJTMolTree.bfs_ex_reconstruct(ctoken = ctoken, bfs_ex_smiles = bfs_ex_smiles, show = True)
-
-    if bfs_tree is not None:
-        dec_smile =  CNJMolAssembler.Accemble_JTVAEMol(vocab            = None, #vocab,
-                                                      ctoken            = ctoken,
-                                                      bfs_binary_tree   = bfs_tree,
-                                                      bfs_node_map      = None,
-                                                      show              = True,
-                                                      alg               = 'JTVAE',
-                                                      #alg              = 'BRICS', #this should not be used now as linking to parts may wrong
-                                                      assemble_alg      = 'JTVAE_decode',   #JTVAE_decode: ChemUtils.decode_moltree
-                                                                                            #group_first: randomly selece one candidate as target 
-                                                                                            #leaf_first: build a candidadate tree
-                                                      candidate_mode    = 'random_one',     #random_one: randomly selece one candidate as target 
-                                                                                            #candidate_tree: build a candidadate tree
-                                                      final_select_alg  = 'plogp',          #random: randomly select on candidate as final output
-                                                                                            #plogp: maximum penalized_logp
-                                                      use_stereo = False,                   #wether enumerate  stereo  as part of final output candidate
-                                                      )
-        print(dec_smile)
-        return 
 
 def rebuild_file(n_samples = 1):
-    maxlen = 256
-    vocab_file = r'H:\GitHub\t-SMILES\RawData\AID1706\active\Scaffold\active_smiles.smi.[Scaffold][24]_token.voc.smi'
+    maxlen = 512
+
+    #vocab_file = r'../RawData/Chembl/Test/Chembl_test.smi.[JTVAE][131]_token.voc.smi'
+    #vocab_file = r'../RawData/Chembl/Test/Chembl_test.smi.[BRICS_Base][94]_token.voc.smi'
+    #vocab_file = r'../RawData/Chembl/Test/Chembl_test.smi.[MMPA][125]_token.voc.smi'
+    #vocab_file = r'../RawData/Chembl/Test/Chembl_test.smi.[Scaffold][103]_token.voc.smi'
+
+    #vocab_file = r'../RawData/Chembl/Test/Chembl_test.smi.[BRICS_DY][102]_token.voc.smi'
+    vocab_file = r'../RawData/Chembl/Test/Chembl_test.smi.[MMPA_DY][237]_token.voc.smi'
+    #vocab_file = r'../RawData/Chembl/Test/Chembl_test.smi.[Scaffold_DY][148]_token.voc.smi'
+
+    #vocab_file = r'../RawData/Chembl/Test/Chembl_test.smi.[Vanilla][94]_token.voc.smi'
 
     ctoken = CTokens(STDTokens_Frag_File(vocab_file), is_pad = True, pad_symbol = ' ', startend = True,
                      max_length = maxlen,  flip = False, invalid = True, onehot = False)    
     
     #-----------------------------------------------------------------------------------
+    #TSSA
+    #smlfile = r'../RawData/Chembl/Test/Chembl_test.smi.[JTVAE][131]_TSSA.csv'
+    #smlfile = r'../RawData/Chembl/Test/Chembl_test.smi.[BRICS_Base][94]_TSSA.csv'
+    #smlfile = r'../RawData/Chembl/Test/Chembl_test.smi.[MMPA][125]_TSSA.csv'
+    #smlfile = r'../RawData/Chembl/Test/Chembl_test.smi.[Scaffold][103]_TSSA.csv'
+     
+    ##TSDY
+    #smlfile = r'../RawData/Chembl/Test/Chembl_test.smi.[BRICS_DY][102]_TSDY.csv'
+    #smlfile = r'../RawData/Chembl/Test/Chembl_test.smi.[MMPA_DY][237]_TSDY.csv'
+    #smlfile = r'../RawData/Chembl/Test/Chembl_test.smi.[Scaffold_DY][148]_TSDY.csv'
+    
+    ##TSID
+    #smlfile = r'../RawData/Chembl/Test/Chembl_test.smi.[BRICS_DY][102]_TSID.csv'
+    smlfile = r'../RawData/Chembl/Test/Chembl_test.smi.[MMPA_DY][237]_TSID.csv'
+    #smlfile = r'../RawData/Chembl/Test/Chembl_test.smi.[Scaffold_DY][148]_TSID.csv'
 
-    smlfile = r'H:\GitHub\t-SMILES\RawData\AID1706\active\Scaffold\active_smiles.smi.[Scaffold][24]_join.csv'
+    ##TS_Vanilla
+    #smlfile = r'../RawData/Chembl/Test/Chembl_test.smi.[Vanilla][94]_TSV.csv'
 
-    p_mean = None
+
+    print(vocab_file)
+    print(smlfile)
+ 
+    #asm_alg = 'CALG_TSSA'  
+    #asm_alg = 'CALG_TSDY'  
+    asm_alg = 'CALG_TSID'  
 
     re_ex_smils = []
-    re_smils = []
+    re_smils_list = []
     errors = []
     new_vocs = []
 
-  
-    df = pd.read_csv(smlfile, squeeze=True, delimiter=',',header = None)       
+    skip_blank_lines = True
+
+    df = pd.read_csv(smlfile, squeeze=True, delimiter=',',header = None ,skip_blank_lines = skip_blank_lines)       
     smiles_list = list(df.values)
+    try:
+        for i, s in enumerate(smiles_list):
+            if str(s) != 'nan': #'nan' blank line
+                smiles_list[i] = ''.join(s.strip().split(' '))
+            else:
+                smiles_list[i] = 'C'
+    except Exception as e:
+        print('Exception:', e.args)
+        return
+
 
     for i, bfs_ex_smiles in tqdm(enumerate(smiles_list), total = len(smiles_list),  desc = 'parsing smiles ...'):
         #bfs_ex_smiles shoule like ['CN', '&', 'NN', '&', 'C=N', '&', 'CC', '&', 'CC', '&', 'C[NH3+]', '&', 'C[NH3+]', '&', ...]
         #print('\r\n[bfs_ex_smiles]: ', bfs_ex_smiles)
 
-        if not isinstance(bfs_ex_smiles, (str)):
-            print(f'[test_rebuild_file is not a string-{i}:-{bfs_ex_smiles}]')
-            continue
-        else:
-            bfs_ex_smiles = CNJMolUtil.split_ex_smiles(bfs_ex_smiles, delimiter='^')
+        for k in range(n_samples):
+            re_smils, bfs_ex_smiles_sub, new_vocs_sub = CNJMolAssembler.decode_single(bfs_ex_smiles, ctoken, asm_alg, n_samples = 1, p_mean = None) 
+            if re_smils is None or re_smils == '':
+                errors.append(f'[{i}],{bfs_ex_smiles}')
 
-        if bfs_ex_smiles is None or len(bfs_ex_smiles) < 1:
-            print(f'[test_rebuild_file is null or empty-{i}:-{bfs_ex_smiles}]')
-            continue
-
-        if len(bfs_ex_smiles) > ctoken.max_length:
-            bfs_ex_smiles = bfs_ex_smiles[0:ctoken.max_length]
-
-
-        bfs_tree, g, bfs_node_map =  CNJTMolTree.bfs_ex_reconstruct(ctoken = ctoken, bfs_ex_smiles = bfs_ex_smiles, show = False)
-
-        if bfs_tree is not None:                      
-            bfs_ex_nodeid, bfs_ex_vocids, bfs_ex_smiles, new_voc= CNJTMolTree.get_bfs_ex(ctoken, bfs_tree)  #generate advanced bfs 
-            if len(bfs_ex_smiles) % 2 == 1:
-                bfs_ex_smiles.append['&']
-
-            if bfs_ex_smiles is not None:
-                re_ex_smils.append(bfs_ex_smiles)
-
-            if len(new_voc)> 0:
-                new_vocs.append(new_voc)
-
-            for k in range(n_samples):
-                dec_smile =  CNJMolAssembler.Accemble_JTVAEMol(vocab = None,    #vocab,
-                                                              ctoken = ctoken,
-                                                              bfs_binary_tree = bfs_tree,
-                                                              bfs_node_map = bfs_node_map,
-                                                              show = False,
-                                                              alg = 'JTVAE',
-                                                              #alg = 'Brics',  #this should not be used now as linking to parts may wrong
-                                                              assemble_alg      = 'JTVAE_decode',    #JTVAE_decode:
-                                                                                                    #group_first: randomly selece one candidate as target 
-                                                                                                    #leaf_first: build a candidadate tree
-                                                              candidate_mode    = 'random_one',     #random_one: randomly selece one candidate as target 
-                                                                                                    #candidate_tree: build a candidadate tree
-                                                              final_select_alg  = 'plogp',          #random: randomly select on candidate as final output
-                                                                                                    #plogp: maximum penalized_logp
-                                                              use_stereo = False,                   #wether enumerate  stereo  as part of final output candidate
-                                                              p_mean = p_mean,
-                                                              )
-                if dec_smile is not None and len(dec_smile)>0:
-                    re_smils.append(dec_smile)
-                else:
-                    errors.append(bfs_ex_smiles)
+            re_smils_list.append(re_smils)
+            new_vocs.extend(new_vocs_sub)
        
-    #output = smlfile + f'.re_ex_smils.csv'
-    #df = pd.DataFrame(re_ex_smils)
-    #df.to_csv(output, index = False, header=False, na_rep="NULL")
   
-    output = smlfile + f'.re_smils.smi'
-    df = pd.DataFrame(re_smils)
+    output = smlfile + f'.re_smils[{n_samples}].smi'
+    df = pd.DataFrame(re_smils_list)
     df.to_csv(output, index = False, header=False, na_rep="NULL")
+    print(output)
 
-    output = smlfile + f'.errors.csv'
+    output = smlfile + f'.errors[{n_samples}].csv'
     df = pd.DataFrame(errors)
     df.to_csv(output, index = False, header=False, na_rep="NULL")
-    
+    print(output)
+   
     new_vocs = [x for l in new_vocs for x in l]  #convert list(list(string)) to list(string)
     new_vocs.sort()
-    output = smlfile + f'.new_vocs.smi'
+    output = smlfile + f'.new_vocs[{n_samples}].smi'
     df = pd.DataFrame(list(set(new_vocs)))
-    df.to_csv(output, index = False, header=False, na_rep="NULL")
-      
+    df.to_csv(output, index = False, header=False, na_rep="NULL")      
     print(output)
 
     return
-
-if __name__ == '__main__':
-
-    test_reconstruct()
-
-    #rebuild_file()

@@ -1,18 +1,18 @@
 import numpy as np
-
-import sys
-sys.path.append('/')
-sys.path.append('../../ExternalGraph/JTVAE/')
-
-import rdkit
-import rdkit.Chem as Chem
 import copy
 
+import rdkit.Chem as Chem
+
 from DataSet.JTNN.ChemUtils import ChemUtils
+from MolUtils.RDKUtils.Utils import RDKUtils
+
+
 from MolUtils.RDKUtils.Frag.RDKFragUtil import Fragment_Alg
 from MolUtils.RDKUtils.Frag.RDKFragBrics import RDKFragBrics
+from MolUtils.RDKUtils.Frag.RDKFragBricsDummy import RDKFragBricsDummy
 from MolUtils.RDKUtils.Frag.RDKFragMMPA import RDKFragMMPA
 from MolUtils.RDKUtils.Frag.RDKFragScaffold import RDKFragScaffold
+from MolUtils.RDKUtils.Frag.RDKFragRBrics import RDKFragRBrics
 
 
 class MolTreeUtils:
@@ -46,13 +46,18 @@ class Vocab(object):
 
 class MolTreeNode(object):
 
-    def __init__(self, smiles, clique=[]):
+    def __init__(self, smiles, clique=[], smarts = None, kekuleSmiles = True):
         self.smiles = smiles
-        self.mol = ChemUtils.get_mol(self.smiles)
+        self.mol = ChemUtils.get_mol(self.smiles, kekuleSmiles)
         self.n_atoms = self.mol.GetNumAtoms()
 
-        self.clique = [x for x in clique] #copy  , [bond.GetBeginAtom().GetIdx(), bond.GetEndAtom().GetIdx()]
+        self.clique = [x for x in clique] 
         self.neighbors = []
+        self.smarts = smarts
+
+        self.kekuleSmiles = kekuleSmiles
+
+        return 
         
     def add_neighbor(self, nei_node):
         self.neighbors.append(nei_node)
@@ -69,21 +74,18 @@ class MolTreeNode(object):
 
         for nei_node in self.neighbors:
             clique.extend(nei_node.clique)
-            if nei_node.is_leaf: #Leaf node, no need to mark 
+            if nei_node.is_leaf: 
                 continue
 
             for cidx in nei_node.clique:
-                #allow singleton node override the atom mapping
                 if cidx not in self.clique or len(nei_node.clique) == 1:
                     atom = original_mol.GetAtomWithIdx(cidx)
                     atom.SetAtomMapNum(nei_node.nid)
 
-        #RDKUtils.show_mol_with_atommap(original_mol, atommap= False)   
-
         clique = list(set(clique))
         label_mol, label_sml = ChemUtils.get_clique_mol(original_mol, clique)
         self.label = Chem.MolToSmiles(Chem.MolFromSmiles(ChemUtils.get_smiles(label_mol)))
-        self.label_mol = ChemUtils.get_mol(self.label)
+        self.label_mol = ChemUtils.get_mol(self.label, self.kekuleSmiles)
 
         for cidx in clique:
             original_mol.GetAtomWithIdx(cidx).SetAtomMapNum(0)
@@ -108,25 +110,52 @@ class MolTreeNode(object):
 class MolTree(object):
     def __init__(self, smiles, 
                 dec_alg = Fragment_Alg.JTVAE,
-                #dec_alg = Fragment_Alg.BRICS
-                #dec_alg = Fragment_Alg.BRICS_Base #no extra ations besides brics
-                #dec_alg = Fragment_Alg.MMPA
-                #dec_alg = Fragment_Alg.Scaffold,
-                kekuleSmiles = True, #updated at 2023.7.28 for for the reason:some kekuleSmiles can not be convert to mol
-                 ):
+                kekuleSmiles = True
+                ):
         self.org_smiles = smiles
         self.kekuleSmiles = kekuleSmiles
         try:
-            self.mol = ChemUtils.get_mol(smiles)  #Chem.Kekulize(mol)
-            if self.mol is None:
+            show = False
+
+            self.org_mol = ChemUtils.get_mol(smiles, kekuleSmiles)  
+            if self.org_mol is None:
                 return 
+
+            if show:
+                RDKUtils.show_mol_with_atommap(self.mol, atommap = True)
+
             
+            self.smiles = Chem.MolToSmiles(self.org_mol, kekuleSmiles = kekuleSmiles)
+            self.smarts = Chem.MolToSmarts(self.org_mol, isomericSmiles=False)
+            self.mol = ChemUtils.get_mol(self.smiles, kekuleSmiles) 
+
+            self.atom_env = None
+
             #Stereo Generation
-            smls = Chem.MolToSmiles(self.mol) #, rootedAtAtom = 0
+            smls = Chem.MolToSmiles(self.mol) 
             mol = Chem.MolFromSmiles(smls)
             self.smiles3D = Chem.MolToSmiles(mol, isomericSmiles=True)
             self.smiles2D = Chem.MolToSmiles(mol)
             self.stereo_cands = ChemUtils.decode_stereo(self.smiles2D)
+
+            self.atoms = self.mol.GetAtoms()     
+            self.n_atoms =  self.mol.GetNumAtoms()
+            self.atom_idx = [atom.GetIdx() for atom in self.atoms]
+            self.atmomic_nums = [atom.GetAtomicNum() for atom in self.atoms] 
+            self.atom_symbols = [atom.GetSymbol() for atom in self.atoms]   
+            self.atmomic_nums_dict = sorted(set([atom.GetAtomicNum() for atom in self.atoms] + [0]))
+            self.atom_n_type = len(self.atmomic_nums_dict)
+
+            self.bonds = self.mol.GetBonds()
+            self.n_bonds = len(self.bonds)
+            self.bonds_s = [bond.GetBondType() for bond in self.bonds]
+            self.bond_labels = [Chem.rdchem.BondType.ZERO] + \
+                    list(sorted(set(bond.GetBondType() for bond in self.bonds)))
+            self.bond_n_types = len(self.bond_labels)
+               
+            begin = [b.GetBeginAtomIdx() for b in self.bonds]
+            end = [b.GetEndAtomIdx() for b in self.bonds]
+            self.bond_pair_list = np.column_stack((np.asarray(begin), np.asarray(end)))            
 
             cliques = []
             edges = []
@@ -137,20 +166,26 @@ class MolTree(object):
             sn_clp = 0
             s_clp = [0]
 
-            sub_smiles = self.org_smiles.split('.')
+            self.atom_env = []
+            self.cut_bonds = []
+
+            sub_smiles = self.smiles.split('.')   
             n_sub = len(sub_smiles)
             
             for k in range(n_sub):
                 sml = sub_smiles[k]
                 if sml == ' ':
                     continue
-                #s_mol = Chem.MolFromSmiles(sml)
-                s_mol = ChemUtils.get_mol(sml)
+                s_mol = ChemUtils.get_mol(sml, kekuleSmiles)
+                n_atoms = s_mol.GetNumAtoms()
 
-                if dec_alg == Fragment_Alg.JTVAE:
+                if dec_alg == Fragment_Alg.Vanilla:
+                    s_cliques = [list(range(n_atoms))]
+                    s_edges = []
+                    motif_str = [self.smiles]
+                elif dec_alg == Fragment_Alg.JTVAE:
                     s_cliques, s_edges = ChemUtils.tree_decomp(s_mol)              
-                elif dec_alg == Fragment_Alg.BRICS:  #
-                    #cliques, edges = brics_decomp(self.mol)
+                elif dec_alg == Fragment_Alg.BRICS:  
                     s_cliques, s_edges = RDKFragBrics.decompose_extra(s_mol)
                     if len(s_edges) <= 1:
                         print('Mol could not be Bricsed:', smiles)
@@ -161,13 +196,20 @@ class MolTree(object):
                     s_cliques, s_edges = RDKFragMMPA.decompose(s_mol)
                 elif dec_alg == Fragment_Alg.Scaffold:
                     s_cliques, s_edges = RDKFragScaffold.decompose(s_mol)
+
+                elif dec_alg == Fragment_Alg.BRICS_DY:
+                    s_cliques, s_edges, motif_str, dummy_atom, motif_smarts = RDKFragBricsDummy.decompose_dummy(s_mol)
+                elif dec_alg == Fragment_Alg.MMPA_DY:
+                    s_cliques, s_edges, motif_str, dummy_atom, motif_smarts = RDKFragMMPA.decompose_dummy(s_mol)
+                elif dec_alg == Fragment_Alg.Scaffold_DY:
+                    s_cliques, s_edges, motif_str, dummy_atom, motif_smarts = RDKFragScaffold.decompose_dummy(s_mol)
+                elif dec_alg == Fragment_Alg.RBrics_DY:
+                    s_cliques, s_edges, motif_str, dummy_atom, motif_smarts = RDKFragRBrics.decompose_dummy(s_mol)
                 else:
-                    #mol as one cliques
-                    n_atoms = s_mol.GetNumAtoms()
                     s_cliques = [list(range(n_atoms))]
                     s_edges = []
 
-                if k > 0:   #--patch for reaction: dot bond------
+                if k > 0:   #--patch for reaction:
                     for i in range(s_cliques.__len__()):
                         for j in range(s_cliques[i].__len__()):
                             s_cliques[i][j] += sn_atoms
@@ -185,39 +227,54 @@ class MolTree(object):
                 cliques.extend(s_cliques)
                 edges.extend(s_edges)
 
-            #--patch for reaction: dot bond------
+            #--patch for reaction: 
             if k > 0:
                 for i in range(1,len(s_clp)-1):
                     pos = s_clp[i]
                     edges.append((pos-1, pos))
-            #------------------------------------
+
+            #--------
+
+            self.edges = edges
  
             self.nodes = []
             root = 0
-            for i,c in enumerate(cliques):
-                cmol, csmiles = ChemUtils.get_clique_mol(mol= self.mol, atoms = c, kekuleSmiles = kekuleSmiles)
-                #sml2 = ChemUtils.get_smiles(cmol, kekuleSmiles=True, rootedAtAtom = 0)
-                node = MolTreeNode(csmiles, c)
+            for i, c in enumerate(cliques):
+                if dec_alg == Fragment_Alg.Vanilla:
+                    csmiles = motif_str[i]
+                    csmarts = csmiles
+                elif dec_alg == Fragment_Alg.BRICS_DY or dec_alg == Fragment_Alg.MMPA_DY or \
+                    dec_alg == Fragment_Alg.Scaffold_DY or dec_alg == Fragment_Alg.RBrics_DY:
+                    csmiles = motif_str[i]
+                    csmarts = motif_smarts[i]
+                else:
+                    cmol, csmiles = ChemUtils.get_clique_mol(mol= self.mol, atoms = c, kekuleSmiles = True)
+                    csmarts = csmiles
+                
+                node = MolTreeNode(csmiles, c, csmarts, kekuleSmiles)
                 self.nodes.append(node)
                 if min(c) == 0:
                     root = i
 
-            for x,y in edges:
+            for x, y in edges:
                 self.nodes[x].add_neighbor(self.nodes[y])
                 self.nodes[y].add_neighbor(self.nodes[x])
         
             if root > 0:
-                self.nodes[0],self.nodes[root] = self.nodes[root],self.nodes[0]
+                self.nodes[0], self.nodes[root] = self.nodes[root], self.nodes[0]
 
             for i,node in enumerate(self.nodes):
-                node.nid = i + 1  #why +1 ????
-                #node.nid = i
-                if len(node.neighbors) > 1: #Leaf node mol is not marked
+                node.nid = i + 1  
+                if len(node.neighbors) > 1: 
                     ChemUtils.set_atommap(node.mol, node.nid)
+
                 node.is_leaf = (len(node.neighbors) == 1)
+
         except Exception as e:
-            print(e.args)
+            print('[MolTree.init].Exception:',e.args)
+            print('[MolTree.init].Exception-smiles:',smiles)
             self.mol = None
+
         return 
 
     def size(self):
@@ -231,46 +288,4 @@ class MolTree(object):
         for node in self.nodes:
             node.assemble()
 
-
-def preprocess_smiles(smlfile, dec_alg = Fragment_Alg.Scaffold): 
-    import pandas as pd
-    from tqdm import tqdm
-
-    df = pd.read_csv(smlfile, squeeze=True, delimiter=',',header = None) 
-    #df.dropna(how="any")
-    #smiles_list = [s for s in df.values.astype(str) if s != 'nan']
-    smiles_list = list(df.values)
-
-    vocab_list = set()
-    for i, sml in tqdm(enumerate(smiles_list), desc = 'parsing smiles to create voc...', total = len(smiles_list)):
-        moltree = MolTree(sml, dec_alg = dec_alg)
-        if moltree.mol is not None:
-            for c in moltree.nodes:
-                vocab_list.add(c.smiles)
-        else:
-            print('There are something wrong with smiles:', sml)
-
-    vocab = sorted(vocab_list)
-
-
-    vocfile = smlfile+'.'+ dec_alg +'_token.voc'
-
-    df = pd.DataFrame(vocab)
-    df.to_csv(vocfile, index = False, header=False, na_rep="NULL")
-    return 
-
-
-if __name__ == "__main__":
-    import sys
-    lg = rdkit.RDLogger.logger() 
-    lg.setLevel(rdkit.RDLogger.CRITICAL)
-
-    smlfile = '../RawData/AID1706/active.smi'       
-
-    preprocess_smiles(smlfile,
-                    dec_alg = Fragment_Alg.JTVAE,
-                    #dec_alg = Fragment_Alg.BRICS
-                    #dec_alg = Fragment_Alg.BRICS_Base #no extra ations besides brics
-                    #dec_alg = Fragment_Alg.MMPA
-                    #dec_alg = Fragment_Alg.Scaffold,
-                    )
+#-----------------------------------------------

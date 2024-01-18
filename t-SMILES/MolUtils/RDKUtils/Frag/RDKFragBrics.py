@@ -6,16 +6,13 @@ from MolUtils.RDKUtils.Frag.RDKFragUtil import RDKFragUtil
 class RDKFragBrics:
 
     def decompose_simple(mol):
-        #run brics algorithm directly without any further actions
         return RDKFragBrics.decompose_extra(mol, break_ex = False, break_long_link = False, break_r_bridge = False)
 
-
     def decompose_extra(mol,
-                        break_ex=True,  # do ex-action besides basic BRICS algorithm
-                        break_long_link=True,  # non-ring and non-ring
-                        break_r_bridge=True,  # ring-ring bridge
+                        break_ex=True, 
+                        break_long_link=True, 
+                        break_r_bridge=True,  
                         ):
-        # RDKUtils.show_mol_with_atommap(mol, atommap = True)
 
         n_atoms = mol.GetNumAtoms()
         if n_atoms == 1:
@@ -26,7 +23,7 @@ class RDKFragBrics:
 
         atom_cliques = {}
         for i in range(n_atoms):
-            atom_cliques[i] = set()  # atom-cliques map
+            atom_cliques[i] = set() 
 
         try:
             mol_bonds = mol.GetBonds()
@@ -99,23 +96,17 @@ class RDKFragBrics:
                 atom = mol.GetAtomWithIdx(aid)
 
                 if len(value) > 2:
-                    # the shared point as a center clique
                     cliques.append([key])
                     single_cliq.append([key])
                 elif len(value) == 2 and mol.GetAtomWithIdx(key).IsInRing():
                     cliques.append([key])
                     single_cliq.append([key])
 
-                # if len(value) == 1 or len(value) == 2:
                 for i in range(len(value)):
                     b = value[i]
                     if [b[0], b[1]] not in cliques and [b[1], b[0]] not in cliques:
                         cliques.append(b)
 
-            # -------------------
-            # find exteral single_cliq when it is created by breaks and no breaks
-            # could be tested using BRICS_Base algorithm
-            # smls = 'CC(=O)Nc1c2C(=O)N(C3CCCCC3)[C@@](C)(C(=O)NC3CCCCC3)Cn2c2ccccc12'
 
             for i in range(n_atoms):
                 atom_cliques[i] = set()
@@ -161,11 +152,25 @@ class RDKFragBrics:
                             edges.append((cid, i))
 
         except Exception as e:
-            print('brics_decomp_extra Exception: ', Chem.MolToSmiles(mol))
+            print('[RDKFragBrics.brics_decomp_extra].Exception: ', Chem.MolToSmiles(mol, kekuleSmiles = True))
             cliques = [list(range(n_atoms))]
             edges = []
             print(e.args)
 
         return cliques, edges
+   
 
+def test():
+    sml = r'CC1=CC=C(C=C1)C2=CC(=NN2C3=CC=C(C=C3)S(=O)(=O)N)C(F)(F)F'
+    mol = Chem.MolFromSmiles(sml)     
+    Chem.Kekulize(mol)
+    if mol is None:
+        print('None')
+
+    brics_bonds = list(BRICS.FindBRICSBonds(mol))
+    print(len(brics_bonds))
+    return 
+
+if __name__ == '__main__':
+    test()
 

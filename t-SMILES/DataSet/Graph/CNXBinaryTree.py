@@ -1,6 +1,7 @@
 import networkx as nx
 import matplotlib.pyplot as plt
 
+from Tools.GraphTools import GTools
 
 class CNXBinaryTree(nx.DiGraph):
     def __init__(self, **attr):
@@ -39,19 +40,23 @@ class CNXBinaryTree(nx.DiGraph):
                 if edata['label'] == 'L':
                     self.add_edge_right(node, dummy_node_id)
                     self.nodes[dummy_node_id]['smile'] = '&'
+                    self.nodes[dummy_node_id]['smarts'] = '&'
                     dummy_node_id += 1 
                 elif edata['label'] == 'R':
                     self.add_edge_left(node, dummy_node_id)                               
                     self.nodes[dummy_node_id]['smile'] = '&'
+                    self.nodes[dummy_node_id]['smarts'] = '&'
                     dummy_node_id += 1 
 
             elif len(edges_list) == 0:
                 self.add_edge_right(node, dummy_node_id)
                 self.nodes[dummy_node_id]['smile'] = '&'
+                self.nodes[dummy_node_id]['smarts'] = '&'
                 dummy_node_id += 1
 
                 self.add_edge_left(node, dummy_node_id)
                 self.nodes[dummy_node_id]['smile'] = '&'
+                self.nodes[dummy_node_id]['smarts'] = '&'
                 dummy_node_id += 1
             else:
                 raise ValueError('[CNXBinaryTree-make_full]: there are more than two children!')
