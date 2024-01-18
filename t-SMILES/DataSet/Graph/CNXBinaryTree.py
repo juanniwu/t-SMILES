@@ -75,15 +75,12 @@ class CNXBinaryTree(nx.DiGraph):
 
 
     def BFS(self, source=None,  reverse=False, depth_limit=None, sort_neighbors=None):
-        #sort_neighbors function
         vlist = list(nx.bfs_tree(g, source = 0))
 
         return vlist
 
     def DFS(self, source=None, depth_limit=None):
-        #g = nx.fast_gnp_random_graph(10, 0.2)
-        vlist = list(nx.dfs_tree(self, source = 0))#, depth_limit = depth_limit
-        #vlist = [list(nx.dfs_tree(g, node)) for node in [1,4,5]]
+        vlist = list(nx.dfs_tree(self, source = 0))
         return vlist
          
 
