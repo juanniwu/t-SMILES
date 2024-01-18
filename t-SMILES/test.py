@@ -58,7 +58,7 @@ def test_decode():
     #bfs_ex = 'CC&C1=CC=C(C2=CC=NN2C2=CC=CC=C2)C=C1&CC&FC(F)F^CS&&N[SH](=O)=O&&&'	    #TSSA-S	
 
     #bfs_ex = 'CC1=CC=C(C2=CC(C(F)(F)F)=NN2C2=CC=C(S(N)(=O)=O)C=C2)C=C1&&&'	#TSDY-B
-    #bfs_ex = '*C&*C1=CC=C(*)C=C1&*C1=CC(*)=NN1*&*C(*)(F)F&*F^*C1=CC=C(*)C=C1&&*S(N)(=O)=O&&&'	#TSDY-M	
+    bfs_ex = '*C&*C1=CC=C(*)C=C1&*C1=CC(*)=NN1*&*C(*)(F)F&*F^*C1=CC=C(*)C=C1&&*S(N)(=O)=O&&&'	#TSDY-M	
     #bfs_ex = '*C&*C1=CC=C(C2=CC(*)=NN2C2=CC=C(*)C=C2)C=C1&*C(F)(F)F&&*S(N)(=O)=O&&'	#TSDY-S	
 
     #bfs_ex = 'CC1=CC=C(C2=CC(C(F)(F)F)=NN2C2=CC=C(S(N)(=O)=O)C=C2)C=C1&&&'	#TSID-B	
@@ -90,10 +90,10 @@ def test_decode():
 
 if __name__ == '__main__':
 
-    #test_encode()
+    test_encode()
 
-    #test_decode()
+    test_decode()
 
-    preprocess()
+    #preprocess()
 
     #rebuild_file()
