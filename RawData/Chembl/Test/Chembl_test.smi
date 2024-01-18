@@ -1,3 +1,8 @@
+CC1=CC=C(C=C1)C2=CC(=NN2C3=CC=C(C=C3)S(=O)(=O)N)C(F)(F)F
+CC(=O)OC1=CC=CC=C1C(=O)O
+CN1C=NC2=C1C(=O)N(C(=O)N2C)C
+CC(=O)NC1=CC=C(C=C1)O
+C[C@@H]1CC(Nc2cncc(-c3nncn3C)c2)C[C@@H](C)C1
 CCc1cc(-c2ccc(C)o2)n(-c2ccc3c(c2)nc(-c2cc(C(=O)N(C)C)ccc2O)n3Cc2ccc(OC)c(O)c2)n1
 FCC1CO1
 O=S1CCCC1

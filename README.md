@@ -76,9 +76,9 @@ We recommend Anaconda to manage the version of Python and installed packages.
 
 Please make sure the following packages are installed:
 
-1.  Python**(version \>= 3.7)**
+1.  Python(version \>= 3.7)
 
-2.  [PyTorch](https://pytorch.org/)** (version == 1.7)**
+2.  [PyTorch](https://pytorch.org/) (version == 1.7)
 
 >   \$ conda install pytorch torchvision cudatoolkit=x.x -c pytorch
 
@@ -86,25 +86,29 @@ Please make sure the following packages are installed:
 
 >   (x.x is the version of CUDA)
 
-1.  [RDKit](https://www.rdkit.org/)** (version \>= 2020.03)**
+1.  [RDKit](https://www.rdkit.org/) (version \>= 2020.03)
 
 >   \$ conda install -c rdkit rdkit
 
-1.  Networkx**(version \>= 2.4)**
+1.  Networkx(version \>= 2.4)
 
 >   \$ pip install networkx
 
-1.  [Numpy](https://numpy.org/)** (version \>= 1.19)**
+1.  [Numpy](https://numpy.org/) (version \>= 1.19)
 
 >   \$ conda install numpy
 
-1.  [Pandas](https://pandas.pydata.org/)** (version \>= 1.2.2)**
+1.  [Pandas](https://pandas.pydata.org/) (version \>= 1.2.2)
 
 >   \$ conda install pandas
 
-1.  [Matplotlib](https://matplotlib.org/)** (version \>= 2.0)**
+1.  [Matplotlib](https://matplotlib.org/) (version \>= 2.0)
 
 >   \$ conda install matplotlib
+
+1.  Scipy(version \>= 1.4.1)
+
+>   \$ pip install scipy
 
 Usage
 =====
@@ -114,24 +118,17 @@ following steps sequentially by running scripts:
 
 1.  **DataSet/Graph/CNJTMol.py**
 
->   preprocess()
+>   encode\_single ()
 
 >   It contained a preprocess function to generate t-SMILES from data set.
 
-1.  **DataSet/Tokenlizer.py**
-
->   preprocess(delimiter=',', invalid\_token = '&', save\_split = False)
-
->   It defines a tokenizer tool which could be used to generate vocabulary of
->   t-SMILES and SMILES.
-
 1.  **DataSet/Graph/CNJMolAssembler.py**
 
->   rebuild\_file()
+>   decode\_single()
 
 >   It reconstructs molecules form t-SMILES to generate classical SMILES.
 
-In this study, MolGPT and RNN generative models are used for evaluation.
+In this study, GPT and RNN generative models are used for evaluation.
 
 Acknowledgement
 ===============
@@ -160,4 +157,6 @@ We thank the following Git repositories that gave me a lot of inspirations:
 
 11. MOSES: https://github.com/molecularsets/moses
 
-12. GPT2: https://github.com/samwisegamjeee/pytorch-transformers
+12. GPT2: <https://github.com/samwisegamjeee/pytorch-transformers>
+
+13. Datamol: https://github.com/datamol-io/datamol

@@ -1,5 +1,4 @@
 
-#from Tools.MathUtils import BCMathUtils
 class BCMathUtils:
     def find_index(datalist, node):
         datalist = list(datalist)
