@@ -80,17 +80,35 @@ Please make sure the following packages are installed:
 
 2.  [PyTorch](https://pytorch.org/) (version == 1.7)
 
-3.  [RDKit](https://www.rdkit.org/) (version \>= 2020.03)
+>   \$ conda install pytorch torchvision cudatoolkit=x.x -c pytorch
 
-4.  Networkx(version \>= 2.4)
+>   Note: it depends on the GPU device and CUDA tookit
 
-5.  [Numpy](https://numpy.org/) (version \>= 1.19)
+>   (x.x is the version of CUDA)
 
-6.  [Pandas](https://pandas.pydata.org/) (version \>= 1.2.2)
+1.  [RDKit](https://www.rdkit.org/) (version \>= 2020.03)
 
-7.  [Matplotlib](https://matplotlib.org/) (version \>= 2.0)
+>   \$ conda install -c rdkit rdkit
 
-8.  Scipy(version \>= 1.4.1)
+1.  Networkx(version \>= 2.4)
+
+>   \$ pip install networkx
+
+1.  [Numpy](https://numpy.org/) (version \>= 1.19)
+
+>   \$ conda install numpy
+
+1.  [Pandas](https://pandas.pydata.org/) (version \>= 1.2.2)
+
+>   \$ conda install pandas
+
+1.  [Matplotlib](https://matplotlib.org/) (version \>= 2.0)
+
+>   \$ conda install matplotlib
+
+1.  Scipy(version \>= 1.4.1)
+
+>   \$ pip install scipy
 
 Usage
 =====
