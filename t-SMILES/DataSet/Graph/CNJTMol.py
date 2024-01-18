@@ -77,8 +77,8 @@ class CNJTMolTree(MolTree):
         self.kekuleSmiles   = kekuleSmiles 
 
         self.ctoken         = ctoken
-        self.end_token      = ctoken.invalid_token #'&'
-        self.end_token_idx  = ctoken.invalid_index # #P
+        self.end_token      = ctoken.invalid_token 
+        self.end_token_idx  = ctoken.invalid_index 
 
         self.jtvoc = ctoken.STDTokens.vocab
         self.n_voc = self.jtvoc.size()      
@@ -86,7 +86,6 @@ class CNJTMolTree(MolTree):
         if smiles is not None and len(smiles) > 0:
             self.init_from_smile(smiles, jtvoc,ctoken, dec_alg = dec_alg, kekuleSmiles = kekuleSmiles)
         else:
-            #print('create a dummy CNJTMolTree')
             self.mol = None
 
         return
@@ -186,7 +185,7 @@ class CNJTMolTree(MolTree):
                     break                
 
             visited[idx] = 1
-            self.nx_parent_map[idx] = pid   #
+            self.nx_parent_map[idx] = pid   
 
         for idx in bfs_idx:
             nbs = (list(self.neighbor_map[idx])).copy()
@@ -218,7 +217,7 @@ class CNJTMolTree(MolTree):
         return parent
 
     def create_bfs_binary_tree_ex(self, show = False):
-        self.nx_binarytree = CNXBinaryTree()  #DiGraph
+        self.nx_binarytree = CNXBinaryTree()  
          
         visited = np.zeros((self.n_nodes))
 
@@ -259,7 +258,7 @@ class CNJTMolTree(MolTree):
                 parent = self.nx_binarytree.nodes[p_idx]['data']
                 child = self.nx_binarytree.nodes[child_idx]['data']
 
-                self.nx_binarytree.add_edge_left(p_idx, child_idx)  #nx_binarytree left
+                self.nx_binarytree.add_edge_left(p_idx, child_idx)  
 
                 point = parent.add_left(child)  
 
@@ -600,9 +599,8 @@ class CNJTMolTree(MolTree):
 
 class CNJMolUtils:
     def encode_single(smls, ctoken, dec_alg):
-        #print('[smls is]:', smls)
         try:
-            sub_smils = smls.strip().split('.')  #for reaction
+            sub_smils = smls.strip().split('.')  
             combine_sml = []
             combine_smt = []
             for sml in sub_smils:
@@ -672,7 +670,6 @@ def preprocess():
         save_prex = dec_alg.name
 
         for i, sml in tqdm(enumerate(smiles_list), total = len(smiles_list),  desc = 'parsing smiles ...'):
-            #print(sml)
             if sml is None or str(sml) == 'nan' :
                 continue
             sml = ''.join(sml.strip().split(' '))

@@ -27,7 +27,6 @@ class CNJMolUtil:
                         osml = ctoken.get_token(idx)
                     else:
                         osml =  CNJMolUtil.find_best_match(sml, ctoken) 
-                        #osml = sf.decoder(sf.encoder(sml))
              
                 print(f'node smile [{sml}] is invalid, which is replaced by [{osml}]')
             else:
@@ -67,7 +66,6 @@ class CNJMolUtil:
             return False
 
     def combine_ex_smiles(bfs_ex_smiles, delimiter = '^'):
-        #bfs_ex_smiles : ['C(=CC1=CC=CC=C1)COC1CCNCC1', '&', '&', '&']
         split_char = delimiter
         if bfs_ex_smiles is None or len(bfs_ex_smiles) ==0:
             return '', ''
@@ -107,5 +105,4 @@ class CNJMolUtil:
                     group +=s
             if group != '':
                 output.append(group) 
-        #words = [w.split('&') for w in words]
         return output

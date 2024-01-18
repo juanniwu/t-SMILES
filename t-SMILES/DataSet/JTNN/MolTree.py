@@ -209,7 +209,7 @@ class MolTree(object):
                     s_cliques = [list(range(n_atoms))]
                     s_edges = []
 
-                if k > 0:   #--patch for reaction:
+                if k > 0:   
                     for i in range(s_cliques.__len__()):
                         for j in range(s_cliques[i].__len__()):
                             s_cliques[i][j] += sn_atoms
