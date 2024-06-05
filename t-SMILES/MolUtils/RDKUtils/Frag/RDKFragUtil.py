@@ -522,14 +522,17 @@ class RDKFragUtil:
 
         return bfs_frags
 
-    def fix_mol(smls):
+    def fix_mol(smls, standardize = True):
         new_smls = None
         try:
             mol = dm.to_mol(smls)
             if mol is not None:
                 mol = dm.fix_mol(mol)
                 mol = dm.sanitize_mol(mol, sanifix=True, charge_neutral=False)
-                new_smls = dm.standardize_smiles(dm.to_smiles(mol))           
+                if standardize:
+                    new_smls = dm.standardize_smiles(dm.to_smiles(mol)) 
+                else:
+                    new_smls =  Chem.MolToSmiles(mol)   
         except Exception as e:
             print('[RDKFragUtil.fix_mol].exception:', e.args)
             new_smls = Chem.MolToSmiles(Chem.MolFromSmiles(smls))
