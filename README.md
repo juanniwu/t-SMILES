@@ -13,6 +13,10 @@ molecular graph.
 
 **For more details, please refer to the paper.**
 
+>   TSSA, TSDY, TSID: <https://www.nature.com/articles/s41467-024-49388-6>
+
+>   [TSIS](https://arxiv.org/abs/2402.02164): https://arxiv.org/abs/2402.02164
+
 Systematic evaluations using JTVAE, BRICS, MMPA, and Scaffold show that:
 
 1.  It can build a multi-code molecular description system, where various
@@ -37,13 +41,15 @@ introduce another new character, '\^', to separate two adjacent substructure
 segments in t-SMILES string, similar to the blank space in English sentences
 that separates two words.
 
-Three coding algorithms are presented in this study:
+Four coding algorithms are presented in these studies:
 
 1.  TSSA: t-SMILES with shared atom.
 
 2.  TSDY: t-SMILES with dummy atom but without ID.
 
 3.  TSID: t-SMILES with ID and dummy atom.
+
+4.  TSIS: Simplified TSID, including TSIS, TSISD, TSISO, TSISR.
 
 For example, the three t-SMILES codes of Celecoxib are:
 
@@ -58,6 +64,18 @@ For example, the three t-SMILES codes of Celecoxib are:
 **TSSA\_M:**
 
 -   CC&C1=CC=CC=C1&CC&C1=C[NH]N=C1&CN&C1=CC=CC=C1\^CC\^CS&C&N[SH]=O&CF&&&&FCF&&
+
+**TSIS\_M:**
+
+-   [1\*]C\^[1\*]C1=CC=C([2\*])C=C1\^[2\*]C1=CC([3\*])=NN1[5\*]\^[3\*]C([4\*])(F)F\^[5\*]C1=CC=C([6\*])C=C1\^[4\*]F\^[6\*]S(N)(=O)=O
+
+**TSISD\_M:**
+
+-   [1\*]C\^[1\*]C1=CC=C([2\*])C=C1\^[2\*]C1=CC([3\*])=NN1[5\*]\^[3\*]C([4\*])(F)F\^[4\*]F\^[5\*]C1=CC=C([6\*])C=C1\^[6\*]S(N)(=O)=O
+
+**TSISO\_M:**
+
+-   [2\*]C1=CC([3\*])=NN1[5\*]\^[1\*]C1=CC=C([2\*])C=C1\^[5\*]C1=CC=C([6\*])C=C1\^[3\*]C([4\*])(F)F\^[6\*]S(N)(=O)=O\^[1\*]C\^[4\*]F
 
 ![](media/e67eb934f05d2a0099641a463d1fa039.png)
 
