@@ -77,7 +77,7 @@ For example, the three t-SMILES codes of Celecoxib are:
 
 -   [2\*]C1=CC([3\*])=NN1[5\*]\^[1\*]C1=CC=C([2\*])C=C1\^[5\*]C1=CC=C([6\*])C=C1\^[3\*]C([4\*])(F)F\^[6\*]S(N)(=O)=O\^[1\*]C\^[4\*]F
 
-![](media/3c54a14c1273d3296bf11da642f7ae2e.png)
+![](media/e6755060fc12f7f37cd8753d3f527c4e.png)
 
 ![](media/09b674d2cd4e79f7a818db1f3f6e7e01.png)
 
