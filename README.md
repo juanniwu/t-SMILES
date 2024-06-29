@@ -13,9 +13,9 @@ molecular graph.
 
 **For more details, please refer to the papers.**
 
->   TSSA, TSDY, TSID: <https://www.nature.com/articles/s41467-024-49388-6>
+>   **TSSA, TSDY, TSID**: https://www.nature.com/articles/s41467-024-49388-6
 
->   TSIS (TSIS, TSISD, TSISO, TSISR): https://arxiv.org/abs/2402.02164
+>   **TSIS (TSIS, TSISD, TSISO, TSISR):** https://arxiv.org/abs/2402.02164
 
 Systematic evaluations using JTVAE, BRICS, MMPA, and Scaffold show that:
 
@@ -51,7 +51,7 @@ Four coding algorithms are presented in these studies:
 
 4.  TSIS: Simplified TSID, including TSIS, TSISD, TSISO, TSISR.
 
-For example, the three t-SMILES codes of Celecoxib are:
+For example, the six t-SMILES codes of Celecoxib are:
 
 **TSID\_M:**
 
@@ -110,6 +110,10 @@ Please make sure the following packages are installed:
 
 8.  Scipy(version \>= 1.4.1)
 
+As to Datamol and rBRICS: please download them
+from <https://github.com/datamol-io/datamol> and <https://github.com/BiomedSciAI/r-BRICS> and
+copy them into the MolUtils folder.
+
 Usage
 =====
 
@@ -132,28 +136,30 @@ Acknowledgement
 
 We thank the following Git repositories that gave me a lot of inspirations:
 
-1.  MolGPT : https://github.com/devalab/molgpt
+1.  **Datamol:** <https://github.com/datamol-io/datamol>
 
-2.  MGM: https://github.com/nyu-dl/dl4chem-mgm
+2.  **rBRICS:** <https://github.com/BiomedSciAI/r-BRICS>
 
-3.  JTVAE: https://github.com/wengon-jin/icml18-jtnn
+3.  MolGPT : https://github.com/devalab/molgpt
 
-4.  hgraph2graph: https://github.com/wengong-jin/hgraph2graph
+4.  MGM: https://github.com/nyu-dl/dl4chem-mgm
 
-5.  DeepSmiles: https://github.com/baoilleach/deepsmiles
+5.  JTVAE: https://github.com/wengon-jin/icml18-jtnn
 
-6.  SELFIES: https://github.com/aspuru-guzik-group/selfies
+6.  hgraph2graph: https://github.com/wengong-jin/hgraph2graph
 
-7.  FragDGM: https://github.com/marcopodda/fragment-based-dgm
+7.  DeepSmiles: https://github.com/baoilleach/deepsmiles
 
-8.  CReM: https://github.com/DrrDom/crem
+8.  SELFIES: https://github.com/aspuru-guzik-group/selfies
 
-9.  AttentiveFP: https://github.com/OpenDrugAI/AttentiveFP
+9.  FragDGM: https://github.com/marcopodda/fragment-based-dgm
 
-10. Guacamol: https://github.com/BenevolentAI/guacamol\_baselines
+10. CReM: https://github.com/DrrDom/crem
 
-11. MOSES: https://github.com/molecularsets/moses
+11. AttentiveFP: https://github.com/OpenDrugAI/AttentiveFP
 
-12. GPT2: <https://github.com/samwisegamjeee/pytorch-transformers>
+12. Guacamol: https://github.com/BenevolentAI/guacamol\_baselines
 
-13. Datamol: https://github.com/datamol-io/datamol
+13. MOSES: https://github.com/molecularsets/moses
+
+14. GPT2: <https://github.com/samwisegamjeee/pytorch-transformers>
