@@ -11,6 +11,7 @@ from DataSet.Graph.CNJTMol import preprocess
 
 
 def test_encode():
+    print('---test_encode---')
     smls = 'CC1=CC=C(C=C1)C2=CC(=NN2C3=CC=C(C=C3)S(=O)(=O)N)C(F)(F)F'  #celecoxib
 
     dec_algs = [
@@ -45,6 +46,7 @@ def test_encode():
 
 
 def test_decode():
+    print('---test_decode---')
     maxlen = 512
     
     vocab_file = r'../RawData/Chembl/Test/Chembl_test.smi.[MMPA_DY][237]_token.voc.smi'    #vs
@@ -97,7 +99,7 @@ if __name__ == '__main__':
 
     test_encode()
 
-    #test_decode()
+    test_decode()
 
 
 
