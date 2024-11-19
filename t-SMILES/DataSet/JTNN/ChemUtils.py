@@ -4,7 +4,7 @@ from scipy.sparse.csgraph import minimum_spanning_tree
 from collections import defaultdict
 
 import rdkit.Chem as Chem
-from rdkit.Chem.EnumerateStereoisomers import EnumerateStereoisomers
+from rdkit.Chem.EnumerateStereoisomers import EnumerateStereoisomers, StereoEnumerationOptions
 
 from MolUtils.RDKUtils.Utils import RDKUtils
 
@@ -76,15 +76,19 @@ class ChemUtils:
             new_mol.AddBond(a1, a2, bt)
         return new_mol
 
-    def get_clique_mol(mol, atoms, kekuleSmiles=True):              
+    def get_clique_mol(mol, atoms, kekuleSmiles=True, isomericSmiles = True):              
         try:
             smiles = ''
             if kekuleSmiles:
                 smiles  = Chem.MolFragmentToSmiles(mol, atoms, kekuleSmiles = True)
                 new_mol = Chem.MolFromSmiles(smiles, sanitize=False)
-                new_mol = ChemUtils.copy_edit_mol(new_mol).GetMol()
-                new_mol = ChemUtils.sanitize(new_mol) 
-                sml = Chem.MolToSmiles(new_mol, kekuleSmiles = True) 
+                sml = smiles
+                
+                if not isomericSmiles:               
+                    new_mol = ChemUtils.copy_edit_mol(new_mol).GetMol()
+                    new_mol = ChemUtils.sanitize(new_mol) #We assume this is not None
+                    sml = Chem.MolToSmiles(new_mol, kekuleSmiles = True, isomericSmiles = True) #, rootedAtAtom = 0   
+
             else:
                 new_mol = ChemUtils.copy_edit_mol(mol).GetMol()
                 smiles  = Chem.MolFragmentToSmiles(new_mol, atoms, kekuleSmiles = True)#
@@ -336,8 +340,11 @@ class ChemUtils:
 
                 cand_smiles.add(smiles)
                 candidates.append(amap)
-                if len(candidates) > 3: 
-                    print('ChemUtils[enum_assemble] len(candidates) > 3')
+
+                #ncand = 20  #default
+                ncand = 5
+                if len(candidates) > ncand:  #A patchch to stop loop  
+                    print(f'ChemUtils[enum_assemble] len(candidates) > {ncand}')
                     break
 
             if len(candidates) == 0:

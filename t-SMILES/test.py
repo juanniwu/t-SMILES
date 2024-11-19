@@ -14,15 +14,17 @@ def test_encode():
     smls = 'CC1=CC=C(C=C1)C2=CC(=NN2C3=CC=C(C=C3)S(=O)(=O)N)C(F)(F)F'  #celecoxib
 
     dec_algs = [
-     Fragment_Alg.Vanilla,
-     Fragment_Alg.JTVAE,
-     Fragment_Alg.BRICS,
-     Fragment_Alg.BRICS_Base,
-     Fragment_Alg.MMPA,
-     Fragment_Alg.Scaffold,
-     Fragment_Alg.BRICS_DY,
+     #Fragment_Alg.Vanilla,
+
+     #Fragment_Alg.JTVAE,
+     #Fragment_Alg.BRICS,
+     #Fragment_Alg.BRICS_Base,
+     #Fragment_Alg.MMPA,
+     #Fragment_Alg.Scaffold,
+
+     #Fragment_Alg.BRICS_DY,
      Fragment_Alg.MMPA_DY,
-     Fragment_Alg.Scaffold_DY,
+     #Fragment_Alg.Scaffold_DY,
      #Fragment_Alg.RBrics_DY,
     ]
 
@@ -32,18 +34,21 @@ def test_encode():
 
 
     for dec_alg in dec_algs:
-        combine_sml, combine_smt = CNJMolUtils.encode_single(smls, ctoken, dec_alg)
+        combine_sml, combine_smt, amt_bfs_smarts = CNJMolUtils.encode_single(smls, ctoken, dec_alg)
     
         print('[dec_alg is]:', dec_alg.name)
         print('[TSSA/TSDY]:', combine_sml)  
         print('[TSID     ]:', combine_smt)     
+        print('[TSIS     ]:', amt_bfs_smarts)     
    
     return 
 
 
 def test_decode():
     maxlen = 512
-    vocab_file = r'../RawData/Chembl/Test/Chembl_test.smi.[MMPA_DY][237]_token.voc.smi'
+    
+    vocab_file = r'../RawData/Chembl/Test/Chembl_test.smi.[MMPA_DY][237]_token.voc.smi'    #vs
+    #vocab_file = r'./RawData/Chembl/Test/Chembl_test.smi.[MMPA_DY][237]_token.voc.smi'      #vs code
 
     ctoken = CTokens(STDTokens_Frag_File(vocab_file), is_pad = True, pad_symbol = ' ', startend = True,
                      max_length = maxlen,  flip = False, invalid = True, onehot = False)
@@ -64,14 +69,11 @@ def test_decode():
     #bfs_ex = 'CC1=CC=C(C2=CC(C(F)(F)F)=NN2C2=CC=C(S(N)(=O)=O)C=C2)C=C1&&&'	#TSID-B	
     #bfs_ex = '[1*]C&[1*]C1=CC=C([2*])C=C1&[2*]C1=CC([3*])=NN1[5*]&[3*]C([4*])(F)F&[4*]F^[5*]C1=CC=C([6*])C=C1&&[6*]S(N)(=O)=O&&&'	#TSID_M	
     #bfs_ex = '[1*]C&[1*]C1=CC=C(C2=CC([2*])=NN2C2=CC=C([3*])C=C2)C=C1&[2*]C(F)(F)F&&[3*]S(N)(=O)=O&&'	#TSID-S	
-
-
-    #bfs_ex = 'O=[PH](O)O&CP&C&CN&CN^CC^CC&C1=CC=CC=C1&C1=CC=CC=C1&&&&&'
-    #bfs_ex = 'CCc1ccc(CCP)cc1&O=[PH](O)O&&&'
     
     #asm_alg = 'CALG_TSSA'    
     asm_alg = 'CALG_TSDY'    
     #asm_alg = 'CALG_TSID'    
+    #asm_alg = 'CALG_TSIS'    
 
     bfs_ex = ''.join(bfs_ex.strip().split(' '))
     print('input:=', bfs_ex)
@@ -80,10 +82,13 @@ def test_decode():
     bfs_ex_smiles = CNJMolUtil.split_ex_smiles(bfs_ex, delimiter='^')
     print('bfs_ex_smiles', bfs_ex_smiles)     
     
-    n_samples = 2
+    n_samples = 1
     for i in range(n_samples):
-        re_smils, bfs_ex_smiles_sub, new_vocs_sub = CNJMolAssembler.decode_single(bfs_ex, ctoken , asm_alg, n_samples = 1, p_mean = None) 
-        print('dec_smile:=', re_smils)
+        re_smils, bfs_ex_smiles_sub, new_vocs_sub, skt_wrong = CNJMolAssembler.decode_single(bfs_ex, ctoken , asm_alg, n_samples = 1, p_mean = None) 
+        print('dec_smile:=',         re_smils)
+        print('bfs_ex_smiles_sub:=', bfs_ex_smiles_sub)
+        print('new_vocs_sub:=',      new_vocs_sub)
+        print('skt_wrong:=',         skt_wrong)
     
     return 
 
@@ -92,8 +97,7 @@ if __name__ == '__main__':
 
     test_encode()
 
-    test_decode()
+    #test_decode()
 
-    #preprocess()
 
-    #rebuild_file()
+

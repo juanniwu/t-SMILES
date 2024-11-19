@@ -1318,9 +1318,21 @@ def rebuild_file(n_samples = 1):
     #smlfile = r'H:\RawData\ChEMBL\Test\Chembl_test.smi.[Scaffold_DY][148]_TSID.csv.aug[2].csv'
 
     ##TS_Vanilla
-    #smlfile = r'../RawData/Chembl/Test/Chembl_test.smi.[Vanilla][94]_TSV.csv'        
+    #smlfile = r'../RawData/Chembl/Test/Chembl_test.smi.[Vanilla][94]_TSV.csv'
+        
+    #-------test------------------
+    #smlfile = r'D:\ProjectTF\RawData\examples\WT\mol.smi.[BRICS_DY][142]_TSDY.csv'
+    #smlfile = r'D:\ProjectTF\RawData\examples\WT\mol.smi.[MMPA_DY][188]_TSDY.csv'
+    #smlfile = r'D:\ProjectTF\RawData\examples\WT\mol.smi.[Scaffold_DY][160]_TSDY.csv'
+
+    #smlfile = r'D:\ProjectTF\RawData\examples\WT\mol.smi.[BRICS_DY][142]_TSID.csv'
+    #smlfile = r'D:\ProjectTF\RawData\examples\WT\mol.smi.[MMPA_DY][188]_TSID.csv'
+    #smlfile = r'D:\ProjectTF\RawData\examples\WT\mol.smi.[Scaffold_DY][160]_TSID.csv'
     
-    #-------------------------------
+    #----xiaozhi---------------------------------
+    #smlfile = r'G:\Report\Xiaozhi\gen_smiles_tsmi_epoch12.csv'
+
+    #-----------------------------
 
     #smlfile= r'../RawData/Example/mol.smi.[MMPA][103]_TSSA.csv'
     #smlfile= r'../RawData/Example/mol.smi.[MMPA_DY][202]_TSDY.csv'
@@ -1396,17 +1408,15 @@ def rebuild_file(n_samples = 1):
 
 def test_decode():
     
+    #-----test skt_wrong------------------------------------
+
     #-------Celecoxib--------------------------------
-    TSSA_M  = 'CC&C1=CC=CC=C1&CC&C1=C[NH]N=C1&CN&C1=CC=CC=C1^CC^CS&C&N[SH](=O)=O&CF&&&&FCF&&'
-    TSDY_M  = '*C&*C1=CC=C(*)C=C1&*C1=CC(*)=NN1*&*C(*)(F)F&*F^*C1=CC=C(*)C=C1&&*S(N)(=O)=O&&&'
-    TSID_M  = '[1*]C&[1*]C1=CC=C([2*])C=C1&[2*]C1=CC([3*])=NN1[5*]&[3*]C([4*])(F)F&[4*]F^[5*]C1=CC=C([6*])C=C1&&[6*]S(N)(=O)=O&&&'
+    TSID_M  = '[1*]C&[1*]C1=CC=C([2*])C=C1&[2*]C1=CC([3*])=NN1[5*]&[3*]C([4*])(F)F&[4*]F^[5*]C1=CC=C([6*])C=C1&& [6*]S(N)(=O)=O&&&'
     TSIS_M  = '[1*]C^[1*]C1=CC=C([2*])C=C1^[2*]C1=CC([3*])=NN1[5*]^[3*]C([4*])(F)F^[5*]C1=CC=C([6*])C=C1^[4*]F^[6*]S(N)(=O)=O'
     TSISD_M = '[1*]C^[1*]C1=CC=C([2*])C=C1^[2*]C1=CC([3*])=NN1[5*]^[3*]C([4*])(F)F^[4*]F^[5*]C1=CC=C([6*])C=C1^[6*]S(N)(=O)=O'
     TSISO_M = '[2*]C1=CC([3*])=NN1[5*]^[1*]C1=CC=C([2*])C=C1^[5*]C1=CC=C([6*])C=C1^[3*]C([4*])(F)F^[6*]S(N)(=O)=O^[1*]C^[4*]F'
     TSISR_M = '[6*]S(N)(=O)=O^[1*]C^[2*]C1=CC([3*])=NN1[5*]^[1*]C1=CC=C([2*])C=C1^[3*]C([4*])(F)F^[5*]C1=CC=C([6*])C=C1^[4*]F'
 
-    #tsmile = TSSA_M
-    #tsmile = TSDY_M
     #tsmile = TSID_M
     tsmile = TSIS_M
     #tsmile = TSISD_M

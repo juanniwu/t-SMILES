@@ -1,9 +1,13 @@
 import random
+import copy
+
+import rdkit
 from rdkit import Chem
 
 from Levenshtein import distance as levenshtein   #pip install python-Levenshtein
 
 from DataSet.STDTokens import CTokens
+from MolUtils.RDKUtils.RDKEnumerator import RDKEnumerateSmiles
 
 class CNJMolUtil:
     def valid_smiles(sml, ctoken = None, 
@@ -85,8 +89,32 @@ class CNJMolUtil:
             else:
                 skeleton = skeleton + 'A'
 
-        return sml, skeleton  
-    
+        return sml, skeleton          
+
+    def aug_ex_smiles(bfs_ex_smiles, n_aug = 10,  code = 'smiles', isomericSmiles = True, kekuleSmiles = False):
+        n_frags = len(bfs_ex_smiles)
+
+        aug_ex_smiles = []
+        aug_sml = []
+        for frag in bfs_ex_smiles:
+            if frag is '&' and frag is '^':
+                sfrags  = [frag] * n_aug
+            else:
+                aug_frags = RDKEnumerateSmiles.enumerate_smiles(frag, n_aug, code , isomericSmiles, kekuleSmiles)
+
+            aug_sml.append(aug_frags)
+
+        for k in range(n_aug):
+            sml = ''
+            for i in range(n_frags):
+                sml += aug_sml[i][k]      
+                
+            #jined_sml, _ = CNJMolUtil.combine_ex_smiles(sml)
+            aug_ex_smiles.append(sml)
+
+
+        return aug_ex_smiles
+
 
     def split_ex_smiles(ex_smiles, delimiter = '^'):
         split = delimiter
@@ -106,3 +134,13 @@ class CNJMolUtil:
             if group != '':
                 output.append(group) 
         return output
+
+
+if __name__ == '__main__':
+
+    #test_encode()
+
+    #test_decode()
+
+    preprocess()
+

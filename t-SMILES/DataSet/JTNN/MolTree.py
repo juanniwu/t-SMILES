@@ -46,7 +46,7 @@ class Vocab(object):
 
 class MolTreeNode(object):
 
-    def __init__(self, smiles, clique=[], smarts = None, kekuleSmiles = True):
+    def __init__(self, smiles, clique=[], smarts = None, kekuleSmiles = True, frg_random = False):
         self.smiles = smiles
         self.mol = ChemUtils.get_mol(self.smiles, kekuleSmiles)
         self.n_atoms = self.mol.GetNumAtoms()
@@ -110,10 +110,12 @@ class MolTreeNode(object):
 class MolTree(object):
     def __init__(self, smiles, 
                 dec_alg = Fragment_Alg.JTVAE,
-                kekuleSmiles = True
+                kekuleSmiles = True, #updated at 2023.7.28 for for the reason:some kekuleSmiles can not be convert to mol
+                frg_random   = False,
                 ):
         self.org_smiles = smiles
         self.kekuleSmiles = kekuleSmiles
+        self.frg_random = frg_random
         try:
             show = False
 

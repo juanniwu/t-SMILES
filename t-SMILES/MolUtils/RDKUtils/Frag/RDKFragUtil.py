@@ -26,6 +26,18 @@ class Fragment_Alg(Enum):
     Scaffold_DY     = 10 #Scaffold_Dummy
     eMolFrag        = 11  
     RBrics_DY       = 12
+    
+class CODE_Alg(Enum):
+    CALG_Vanilla     = 0
+    CALG_TSSA        = 1
+    CALG_TSDY        = 2          
+    CALG_TSID        = 3 
+    CALG_TSIS        = 4  #simplified TSID, with tree: AMT, without FBT, bfs        
+    CALG_SMILES      = 5
+    CALG_DSMILES     = 6
+    CALG_SELFIES     = 7
+    CALG_SAFE        = 8
+
 
 class JointPiece():
     def __init__(self, atom_idx, atom_smarts, nbr_idx, nbr_atom, nbr_atom_env, bond_type, joint_idx_nbr, joint_piece) -> None:
