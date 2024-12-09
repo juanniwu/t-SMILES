@@ -168,3 +168,5 @@ We thank the following Git repositories that gave me a lot of inspirations:
 13. MOSES: https://github.com/molecularsets/moses
 
 14. GPT2: <https://github.com/samwisegamjeee/pytorch-transformers>
+
+15. DIFFUMOL: https://github.com/ComputeSuda/DIFFUMOL
